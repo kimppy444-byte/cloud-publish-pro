@@ -37,6 +37,10 @@ export async function getYouTubeStatus() {
   return invokeYouTubeAuth({ action: 'get_status' });
 }
 
+export async function validateYouTubeConfig(redirectUri: string) {
+  return invokeYouTubeAuth({ action: 'validate', redirectUri });
+}
+
 export async function disconnectYouTube() {
   return invokeYouTubeAuth({ action: 'disconnect' });
 }

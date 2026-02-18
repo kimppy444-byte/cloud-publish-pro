@@ -8,7 +8,7 @@ import { Facebook, Instagram, Key, User, Upload, Settings as SettingsIcon, Loade
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { getFacebookPages, getInstagramAccount } from "@/lib/facebook-api";
-import { getYouTubeAuthUrl, getYouTubeStatus, disconnectYouTube } from "@/lib/youtube-api";
+import { getYouTubeAuthUrl, getYouTubeStatus, disconnectYouTube, validateYouTubeConfig } from "@/lib/youtube-api";
 
 interface ConnectedAccount {
   id: string;
@@ -81,7 +81,20 @@ const SettingsPage = () => {
 
   const handleConnectYouTube = async () => {
     setConnectingYt(true);
-    const redirectUri = 'https://social-media-flock.lovable.app/youtube-callback';
+    const redirectUri = `${window.location.origin}/youtube-callback`;
+
+    // Pre-flight validation
+    const validation = await validateYouTubeConfig(redirectUri);
+    if (!validation.success || !validation.data?.valid) {
+      const issues = validation.data?.issues || [validation.error || 'Unknown validation error'];
+      toast.error('OAuth Configuration Issue', {
+        description: issues.join('. '),
+        duration: 10000,
+      });
+      setConnectingYt(false);
+      return;
+    }
+
     const res = await getYouTubeAuthUrl(redirectUri);
     if (res.success && res.data?.url) {
       window.location.href = res.data.url;
