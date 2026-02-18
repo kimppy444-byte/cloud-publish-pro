@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Upload as UploadIcon, Facebook, Instagram, Film, Plus, X, FileVideo, Loader2, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import { Upload as UploadIcon, Facebook, Instagram, Film, X, FileVideo, Loader2, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,19 +8,20 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { getFacebookPages, getInstagramAccount } from "@/lib/facebook-api";
-import { getYouTubeStatus } from "@/lib/youtube-api";
+import { getYouTubeChannels } from "@/lib/youtube-api";
 import { publishToFacebook, publishToInstagram, uploadToYouTube } from "@/lib/publish-api";
 import { supabase } from "@/integrations/supabase/client";
+import VideoPreview from "@/components/VideoPreview";
 
 interface UploadDestination {
   id: string;
   name: string;
   platform: "facebook" | "instagram" | "youtube";
   picture?: string;
-  // For FB/IG publishing
   pageId?: string;
   pageAccessToken?: string;
   igAccountId?: string;
+  channelTokenId?: string;
 }
 
 interface PublishResult {
@@ -29,6 +30,12 @@ interface PublishResult {
   success: boolean;
   error?: string;
 }
+
+const YtIcon = () => (
+  <svg viewBox="0 0 24 24" className="w-4 h-4 text-youtube" fill="currentColor">
+    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.546 12 3.546 12 3.546s-7.505 0-9.377.504A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.504 9.376.504 9.376.504s7.505 0 9.377-.504a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+  </svg>
+);
 
 const UploadPage = () => {
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
@@ -80,14 +87,17 @@ const UploadPage = () => {
         }
       }
 
-      // Check YouTube connection
-      const ytRes = await getYouTubeStatus();
-      if (ytRes.success && ytRes.data?.connected) {
-        dests.push({
-          id: 'yt-channel',
-          name: ytRes.data.channelTitle || 'YouTube Channel',
-          platform: "youtube",
-        });
+      // Load all YouTube channels
+      const ytRes = await getYouTubeChannels();
+      if (ytRes.success && ytRes.data?.channels) {
+        for (const ch of ytRes.data.channels) {
+          dests.push({
+            id: `yt-${ch.id}`,
+            name: ch.channelTitle || 'YouTube Channel',
+            platform: "youtube",
+            channelTokenId: ch.id,
+          });
+        }
       }
 
       setDestinations(dests);
@@ -113,6 +123,14 @@ const UploadPage = () => {
     );
   };
 
+  const selectAll = () => {
+    if (selectedAccounts.length === destinations.length) {
+      setSelectedAccounts([]);
+    } else {
+      setSelectedAccounts(destinations.map(d => d.id));
+    }
+  };
+
   const handleUpload = async () => {
     if (!selectedFile) { toast.error("Please select a video file."); return; }
     if (selectedAccounts.length === 0) { toast.error("Please select at least one destination."); return; }
@@ -123,7 +141,6 @@ const UploadPage = () => {
     const publishResults: PublishResult[] = [];
 
     try {
-      // Step 1: Upload to storage
       setUploadProgress('Uploading video to storage...');
       const ext = selectedFile.name.split('.').pop() || 'mp4';
       const storagePath = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
@@ -138,14 +155,12 @@ const UploadPage = () => {
         return;
       }
 
-      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('videos')
         .getPublicUrl(storagePath);
 
       toast.success('Video uploaded to storage!');
 
-      // Step 2: Publish to each selected destination
       const selected = destinations.filter(d => selectedAccounts.includes(d.id));
 
       for (const dest of selected) {
@@ -153,30 +168,15 @@ const UploadPage = () => {
 
         if (dest.platform === 'facebook' && dest.pageId && dest.pageAccessToken) {
           const res = await publishToFacebook(dest.pageId, dest.pageAccessToken, publicUrl, title, description);
-          publishResults.push({
-            destinationName: dest.name,
-            platform: 'Facebook',
-            success: res.success,
-            error: res.error,
-          });
+          publishResults.push({ destinationName: dest.name, platform: 'Facebook', success: res.success, error: res.error });
         } else if (dest.platform === 'instagram' && dest.igAccountId && dest.pageAccessToken) {
           const caption = `${title}\n\n${description}${tags ? '\n\n' + tags.split(',').map(t => `#${t.trim()}`).join(' ') : ''}`;
           const res = await publishToInstagram(dest.igAccountId, dest.pageAccessToken, publicUrl, caption);
-          publishResults.push({
-            destinationName: dest.name,
-            platform: 'Instagram',
-            success: res.success,
-            error: res.error,
-          });
+          publishResults.push({ destinationName: dest.name, platform: 'Instagram', success: res.success, error: res.error });
         } else if (dest.platform === 'youtube') {
           const tagArray = tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [];
           const res = await uploadToYouTube(storagePath, title, description, tagArray, privacy);
-          publishResults.push({
-            destinationName: dest.name,
-            platform: 'YouTube',
-            success: res.success,
-            error: res.error,
-          });
+          publishResults.push({ destinationName: dest.name, platform: 'YouTube', success: res.success, error: res.error });
         }
       }
 
@@ -185,10 +185,9 @@ const UploadPage = () => {
       if (successCount === publishResults.length) {
         toast.success(`Published to all ${successCount} destinations!`);
       } else {
-        toast.warning(`Published to ${successCount}/${publishResults.length} destinations. Check results below.`);
+        toast.warning(`Published to ${successCount}/${publishResults.length} destinations.`);
       }
 
-      // Cleanup storage
       await supabase.storage.from('videos').remove([storagePath]);
     } catch (err: any) {
       toast.error(`Upload failed: ${err.message}`);
@@ -197,12 +196,6 @@ const UploadPage = () => {
       setUploadProgress('');
     }
   };
-
-  const YtIcon = () => (
-    <svg viewBox="0 0 24 24" className="w-4 h-4 text-youtube" fill="currentColor">
-      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.546 12 3.546 12 3.546s-7.505 0-9.377.504A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.504 9.376.504 9.376.504s7.505 0 9.377-.504a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-    </svg>
-  );
 
   return (
     <div className="space-y-8 max-w-4xl">
@@ -216,44 +209,42 @@ const UploadPage = () => {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05 }}
-        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={(e) => { e.preventDefault(); setDragOver(false); const file = e.dataTransfer.files?.[0]; if (file) handleFileSelect(file); }}
-        onClick={() => !uploading && fileInputRef.current?.click()}
-        className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors ${uploading ? 'opacity-50' : 'cursor-pointer'} ${
-          dragOver ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30"
-        }`}
+        className="space-y-4"
       >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="video/mp4,video/quicktime,video/x-msvideo,video/webm"
-          className="hidden"
-          onChange={(e) => { const file = e.target.files?.[0]; if (file) handleFileSelect(file); }}
-        />
         {selectedFile ? (
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center">
-              <FileVideo className="w-6 h-6 text-primary" />
-            </div>
-            <div>
-              <p className="font-medium text-foreground">{selectedFile.name}</p>
-              <p className="text-sm text-muted-foreground mt-1">{(selectedFile.size / (1024 * 1024)).toFixed(1)} MB</p>
-            </div>
+          <div className="space-y-3">
+            <VideoPreview file={selectedFile} />
             {!uploading && (
-              <Button variant="outline" size="sm" className="mt-2" onClick={(e) => { e.stopPropagation(); setSelectedFile(null); }}>
-                <X className="w-4 h-4 mr-2" /> Remove
+              <Button variant="outline" size="sm" onClick={() => setSelectedFile(null)}>
+                <X className="w-4 h-4 mr-2" /> Remove video
               </Button>
             )}
           </div>
         ) : (
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-14 h-14 rounded-xl bg-muted flex items-center justify-center">
-              <UploadIcon className="w-6 h-6 text-muted-foreground" />
-            </div>
-            <div>
-              <p className="font-medium text-foreground">Drop your video here or click to browse</p>
-              <p className="text-sm text-muted-foreground mt-1">MP4, MOV, AVI, WebM</p>
+          <div
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => { e.preventDefault(); setDragOver(false); const file = e.dataTransfer.files?.[0]; if (file) handleFileSelect(file); }}
+            onClick={() => !uploading && fileInputRef.current?.click()}
+            className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors cursor-pointer ${
+              dragOver ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30"
+            }`}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="video/mp4,video/quicktime,video/x-msvideo,video/webm"
+              className="hidden"
+              onChange={(e) => { const file = e.target.files?.[0]; if (file) handleFileSelect(file); }}
+            />
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-14 h-14 rounded-xl bg-muted flex items-center justify-center">
+                <UploadIcon className="w-6 h-6 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="font-medium text-foreground">Drop your video here or click to browse</p>
+                <p className="text-sm text-muted-foreground mt-1">MP4, MOV, AVI, WebM</p>
+              </div>
             </div>
           </div>
         )}
@@ -284,9 +275,7 @@ const UploadPage = () => {
             <div>
               <label className="text-sm font-medium text-foreground mb-1.5 block">Privacy (YouTube)</label>
               <Select value={privacy} onValueChange={setPrivacy} disabled={uploading}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="public">Public</SelectItem>
                   <SelectItem value="unlisted">Unlisted</SelectItem>
@@ -305,8 +294,17 @@ const UploadPage = () => {
         transition={{ delay: 0.15 }}
         className="bg-card rounded-xl p-6 shadow-card border border-border/50 space-y-4"
       >
-        <h2 className="font-display font-semibold text-foreground text-lg">Upload Destinations</h2>
-        <p className="text-sm text-muted-foreground">Select where to publish this video</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-display font-semibold text-foreground text-lg">Upload Destinations</h2>
+            <p className="text-sm text-muted-foreground">Select where to publish this video</p>
+          </div>
+          {destinations.length > 1 && (
+            <Button variant="ghost" size="sm" onClick={selectAll}>
+              {selectedAccounts.length === destinations.length ? 'Deselect All' : 'Select All'}
+            </Button>
+          )}
+        </div>
 
         {loadingDestinations ? (
           <div className="flex items-center justify-center py-8">
@@ -315,7 +313,7 @@ const UploadPage = () => {
         ) : destinations.length === 0 ? (
           <div className="py-4 text-center">
             <AlertCircle className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">No destinations available. Check your Facebook API key and YouTube connection in Settings.</p>
+            <p className="text-sm text-muted-foreground">No destinations available. Check your connections in Settings.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -376,7 +374,6 @@ const UploadPage = () => {
           </Button>
         )}
 
-        {/* Results */}
         {results.length > 0 && (
           <div className="bg-card rounded-xl p-5 shadow-card border border-border/50 space-y-3">
             <h3 className="font-display font-semibold text-foreground">Upload Results</h3>

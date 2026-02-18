@@ -4,11 +4,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Facebook, Instagram, Key, User, Upload, Settings as SettingsIcon, Loader2, CheckCircle2, XCircle, ExternalLink, Unplug } from "lucide-react";
+import { Facebook, Instagram, Key, User, Upload, Settings as SettingsIcon, Loader2, CheckCircle2, XCircle, ExternalLink, Unplug, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { getFacebookPages, getInstagramAccount } from "@/lib/facebook-api";
-import { getYouTubeAuthUrl, getYouTubeStatus, disconnectYouTube, validateYouTubeConfig } from "@/lib/youtube-api";
+import { getYouTubeAuthUrl, getYouTubeChannels, disconnectYouTube, validateYouTubeConfig } from "@/lib/youtube-api";
 
 interface ConnectedAccount {
   id: string;
@@ -16,13 +16,25 @@ interface ConnectedAccount {
   platform: "Facebook" | "Instagram" | "YouTube";
   detail: string;
   picture?: string;
+  channelTokenId?: string;
 }
+
+interface YtChannel {
+  id: string;
+  channelId: string;
+  channelTitle: string;
+}
+
+const YtIcon = () => (
+  <svg viewBox="0 0 24 24" className="w-4 h-4 text-youtube" fill="currentColor">
+    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.546 12 3.546 12 3.546s-7.505 0-9.377.504A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.504 9.376.504 9.376.504s7.505 0 9.377-.504a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+  </svg>
+);
 
 const SettingsPage = () => {
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(true);
-  const [ytConnected, setYtConnected] = useState(false);
-  const [ytChannelTitle, setYtChannelTitle] = useState('');
+  const [ytChannels, setYtChannels] = useState<YtChannel[]>([]);
   const [connectingYt, setConnectingYt] = useState(false);
 
   const loadAccounts = async () => {
@@ -56,19 +68,21 @@ const SettingsPage = () => {
       }
     }
 
-    // Check YouTube
-    const ytRes = await getYouTubeStatus();
-    if (ytRes.success && ytRes.data?.connected) {
-      setYtConnected(true);
-      setYtChannelTitle(ytRes.data.channelTitle || 'YouTube Channel');
-      accs.push({
-        id: 'yt-channel',
-        name: ytRes.data.channelTitle || 'YouTube Channel',
-        platform: "YouTube",
-        detail: `Channel ID: ${ytRes.data.channelId || 'Unknown'}`,
-      });
+    // Load YouTube channels
+    const ytRes = await getYouTubeChannels();
+    if (ytRes.success && ytRes.data?.channels) {
+      setYtChannels(ytRes.data.channels);
+      for (const ch of ytRes.data.channels) {
+        accs.push({
+          id: `yt-${ch.id}`,
+          name: ch.channelTitle || 'YouTube Channel',
+          platform: "YouTube",
+          detail: `Channel ID: ${ch.channelId || 'Unknown'}`,
+          channelTokenId: ch.id,
+        });
+      }
     } else {
-      setYtConnected(false);
+      setYtChannels([]);
     }
 
     setAccounts(accs);
@@ -83,14 +97,10 @@ const SettingsPage = () => {
     setConnectingYt(true);
     const redirectUri = `${window.location.origin}/youtube-callback`;
 
-    // Pre-flight validation
     const validation = await validateYouTubeConfig(redirectUri);
     if (!validation.success || !validation.data?.valid) {
       const issues = validation.data?.issues || [validation.error || 'Unknown validation error'];
-      toast.error('OAuth Configuration Issue', {
-        description: issues.join('. '),
-        duration: 10000,
-      });
+      toast.error('OAuth Configuration Issue', { description: issues.join('. '), duration: 10000 });
       setConnectingYt(false);
       return;
     }
@@ -104,23 +114,15 @@ const SettingsPage = () => {
     }
   };
 
-  const handleDisconnectYouTube = async () => {
-    const res = await disconnectYouTube();
+  const handleDisconnectYouTube = async (channelTokenId?: string) => {
+    const res = await disconnectYouTube(channelTokenId);
     if (res.success) {
-      toast.success('YouTube disconnected');
-      setYtConnected(false);
-      setYtChannelTitle('');
+      toast.success('YouTube channel disconnected');
       loadAccounts();
     } else {
       toast.error(res.error || 'Failed to disconnect');
     }
   };
-
-  const YtIcon = () => (
-    <svg viewBox="0 0 24 24" className="w-4 h-4 text-youtube" fill="currentColor">
-      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.546 12 3.546 12 3.546s-7.505 0-9.377.504A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.504 9.376.504 9.376.504s7.505 0 9.377-.504a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-    </svg>
-  );
 
   return (
     <div className="space-y-8 max-w-4xl">
@@ -179,9 +181,16 @@ const SettingsPage = () => {
                         <p className="text-xs text-muted-foreground">{acc.platform} · {acc.detail}</p>
                       </div>
                     </div>
-                    <span className="text-xs text-success flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Connected
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-success flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Connected
+                      </span>
+                      {acc.platform === "YouTube" && acc.channelTokenId && (
+                        <Button variant="ghost" size="sm" onClick={() => handleDisconnectYouTube(acc.channelTokenId)}>
+                          <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -207,7 +216,7 @@ const SettingsPage = () => {
                 </span>
               </div>
               <p className="text-xs text-muted-foreground mt-3">
-                Your Facebook API key is configured as a secure backend secret. To update permissions, generate a new token in your Facebook Developer App with <code className="bg-muted px-1 rounded">pages_manage_posts</code>, <code className="bg-muted px-1 rounded">pages_read_engagement</code>, and <code className="bg-muted px-1 rounded">instagram_content_publish</code> permissions.
+                Your Facebook API key is configured as a secure backend secret. To update permissions, generate a new token with <code className="bg-muted px-1 rounded">pages_manage_posts</code>, <code className="bg-muted px-1 rounded">pages_read_engagement</code>, and <code className="bg-muted px-1 rounded">instagram_content_publish</code> permissions.
               </p>
             </div>
 
@@ -219,11 +228,11 @@ const SettingsPage = () => {
                   <div>
                     <p className="font-medium text-foreground">YouTube</p>
                     <p className="text-xs text-muted-foreground">
-                      {ytConnected ? `Connected: ${ytChannelTitle}` : 'Connect via Google OAuth to upload videos'}
+                      {ytChannels.length > 0 ? `${ytChannels.length} channel${ytChannels.length > 1 ? 's' : ''} connected` : 'Connect via Google OAuth to upload videos'}
                     </p>
                   </div>
                 </div>
-                {ytConnected ? (
+                {ytChannels.length > 0 ? (
                   <span className="text-xs text-success flex items-center gap-1">
                     <CheckCircle2 className="w-3.5 h-3.5" /> Connected
                   </span>
@@ -233,23 +242,35 @@ const SettingsPage = () => {
                   </span>
                 )}
               </div>
-              <div className="mt-4 flex gap-2">
-                {ytConnected ? (
-                  <Button variant="outline" size="sm" onClick={handleDisconnectYouTube}>
-                    <Unplug className="w-4 h-4 mr-2" /> Disconnect
-                  </Button>
-                ) : (
-                  <Button size="sm" className="bg-gradient-brand text-primary-foreground hover:opacity-90" onClick={handleConnectYouTube} disabled={connectingYt}>
-                    {connectingYt ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ExternalLink className="w-4 h-4 mr-2" />}
-                    Connect YouTube
-                  </Button>
-                )}
-              </div>
-              {!ytConnected && (
-                <p className="text-xs text-muted-foreground mt-3">
-                  Note: Your Google Cloud project must have the <strong>YouTube Data API v3</strong> enabled and the redirect URI <code className="bg-muted px-1 rounded">{window.location.origin}/youtube-callback</code> registered in your OAuth client settings.
-                </p>
+
+              {/* List connected channels */}
+              {ytChannels.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  {ytChannels.map(ch => (
+                    <div key={ch.id} className="flex items-center justify-between p-2.5 rounded-lg bg-muted">
+                      <div className="flex items-center gap-2">
+                        <YtIcon />
+                        <span className="text-sm font-medium text-foreground">{ch.channelTitle}</span>
+                        <span className="text-xs text-muted-foreground">({ch.channelId})</span>
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={() => handleDisconnectYouTube(ch.id)}>
+                        <Unplug className="w-3.5 h-3.5 mr-1" /> Remove
+                      </Button>
+                    </div>
+                  ))}
+                </div>
               )}
+
+              <div className="mt-4">
+                <Button size="sm" className="bg-gradient-brand text-primary-foreground hover:opacity-90" onClick={handleConnectYouTube} disabled={connectingYt}>
+                  {connectingYt ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
+                  {ytChannels.length > 0 ? 'Add Another Channel' : 'Connect YouTube'}
+                </Button>
+              </div>
+
+              <p className="text-xs text-muted-foreground mt-3">
+                Note: Your Google Cloud project must have the <strong>YouTube Data API v3</strong> enabled and the redirect URI <code className="bg-muted px-1 rounded">{window.location.origin}/youtube-callback</code> registered.
+              </p>
             </div>
           </motion.div>
         </TabsContent>

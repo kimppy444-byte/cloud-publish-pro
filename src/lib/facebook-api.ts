@@ -56,3 +56,11 @@ export async function getInstagramMedia(igAccountId: string, pageAccessToken?: s
 export async function getUserInfo() {
   return callFacebookApi('get_user_info');
 }
+
+export async function postFacebookComment(objectId: string, message: string, pageAccessToken?: string) {
+  return callFacebookApi('post_facebook_comment', { objectId, message, ...(pageAccessToken ? { pageAccessToken } : {}) });
+}
+
+export async function postInstagramComment(mediaId: string, message: string, pageAccessToken?: string) {
+  return callFacebookApi('post_instagram_comment', { mediaId, message, ...(pageAccessToken ? { pageAccessToken } : {}) });
+}

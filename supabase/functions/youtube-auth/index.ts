@@ -22,49 +22,33 @@ serve(async (req) => {
     }
 
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
-    const { action, code, redirectUri } = await req.json();
+    const { action, code, redirectUri, channelTokenId } = await req.json();
 
     switch (action) {
       case 'validate': {
-        // Pre-flight validation of OAuth configuration
         const issues: string[] = [];
-
         if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.trim() === '') {
           issues.push('GOOGLE_CLIENT_ID is not set');
         } else if (!GOOGLE_CLIENT_ID.endsWith('.apps.googleusercontent.com')) {
-          issues.push('GOOGLE_CLIENT_ID format appears invalid — it should end with ".apps.googleusercontent.com"');
+          issues.push('GOOGLE_CLIENT_ID format appears invalid');
         }
-
         if (!GOOGLE_CLIENT_SECRET || GOOGLE_CLIENT_SECRET.trim() === '') {
           issues.push('GOOGLE_CLIENT_SECRET is not set');
-        } else if (GOOGLE_CLIENT_SECRET.length < 10) {
-          issues.push('GOOGLE_CLIENT_SECRET appears too short — verify the value in your Google Cloud Console');
         }
-
         if (redirectUri) {
-          // Check redirect URI matches expected pattern
           try {
             const url = new URL(redirectUri);
             if (!url.pathname.endsWith('/youtube-callback')) {
-              issues.push(`Redirect URI path should end with "/youtube-callback" — got "${url.pathname}"`);
+              issues.push(`Redirect URI path should end with "/youtube-callback"`);
             }
           } catch {
-            issues.push(`Redirect URI is not a valid URL: "${redirectUri}"`);
+            issues.push(`Redirect URI is not a valid URL`);
           }
         }
-
         return new Response(JSON.stringify({
           success: issues.length === 0,
-          data: {
-            valid: issues.length === 0,
-            issues,
-            clientIdConfigured: !!GOOGLE_CLIENT_ID,
-            clientIdPrefix: GOOGLE_CLIENT_ID ? GOOGLE_CLIENT_ID.substring(0, 8) + '...' : null,
-            redirectUri: redirectUri || null,
-          }
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+          data: { valid: issues.length === 0, issues, clientIdConfigured: !!GOOGLE_CLIENT_ID, redirectUri }
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
       case 'get_auth_url': {
@@ -103,33 +87,51 @@ serve(async (req) => {
         });
         const tokens = await tokenRes.json();
         if (!tokenRes.ok) {
-          // Provide user-friendly error messages for common OAuth errors
           const errorCode = tokens.error;
-          const errorDesc = tokens.error_description || '';
           let friendlyMessage = `Google OAuth error: ${errorCode}`;
-
           if (errorCode === 'invalid_client') {
-            friendlyMessage = 'Invalid OAuth credentials. Please verify your Google Client ID and Client Secret are correct in your project secrets. They must match the credentials in your Google Cloud Console.';
+            friendlyMessage = 'Invalid OAuth credentials. Verify your Google Client ID and Secret.';
           } else if (errorCode === 'redirect_uri_mismatch') {
-            friendlyMessage = `Redirect URI mismatch. The URI "${redirectUri}" is not registered in your Google Cloud Console. Go to APIs & Services → Credentials → your OAuth client → Authorized redirect URIs and add this exact URI.`;
+            friendlyMessage = `Redirect URI mismatch. Add "${redirectUri}" to your Google Cloud Console.`;
           } else if (errorCode === 'invalid_grant') {
-            friendlyMessage = 'Authorization code expired or already used. Please try connecting again.';
+            friendlyMessage = 'Authorization code expired. Please try connecting again.';
           }
-
           throw new Error(friendlyMessage);
         }
 
         // Get channel info
         const channelRes = await fetch(
-          'https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true',
+          'https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true',
           { headers: { Authorization: `Bearer ${tokens.access_token}` } }
         );
         const channelData = await channelRes.json();
         const channel = channelData.items?.[0];
 
-        // Delete existing tokens, store new ones
-        await supabase.from('youtube_tokens').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        // Check if this channel is already connected
+        if (channel?.id) {
+          const { data: existing } = await supabase
+            .from('youtube_tokens')
+            .select('id')
+            .eq('channel_id', channel.id)
+            .maybeSingle();
 
+          if (existing) {
+            // Update existing token
+            await supabase.from('youtube_tokens').update({
+              access_token: tokens.access_token,
+              refresh_token: tokens.refresh_token || existing.refresh_token,
+              token_expiry: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
+              channel_title: channel.snippet?.title || null,
+            }).eq('id', existing.id);
+
+            return new Response(JSON.stringify({
+              success: true,
+              data: { channelId: channel.id, channelTitle: channel.snippet?.title, updated: true }
+            }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          }
+        }
+
+        // Insert new channel token
         const { error: insertError } = await supabase.from('youtube_tokens').insert({
           channel_id: channel?.id || null,
           channel_title: channel?.snippet?.title || null,
@@ -142,51 +144,57 @@ serve(async (req) => {
 
         return new Response(JSON.stringify({
           success: true,
-          data: {
-            channelId: channel?.id,
-            channelTitle: channel?.snippet?.title,
-          }
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+          data: { channelId: channel?.id, channelTitle: channel?.snippet?.title }
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
       case 'get_status': {
-        const { data: row } = await supabase
+        // Returns true if ANY channel is connected
+        const { data: rows } = await supabase
           .from('youtube_tokens')
-          .select('channel_id, channel_title')
-          .limit(1)
-          .maybeSingle();
+          .select('id, channel_id, channel_title')
+          .limit(10);
 
+        const channels = rows || [];
         return new Response(JSON.stringify({
           success: true,
           data: {
-            connected: !!row,
-            channelId: row?.channel_id,
-            channelTitle: row?.channel_title,
+            connected: channels.length > 0,
+            channelCount: channels.length,
+            channels: channels.map(r => ({ id: r.id, channelId: r.channel_id, channelTitle: r.channel_title })),
+            // Backward compat
+            channelId: channels[0]?.channel_id,
+            channelTitle: channels[0]?.channel_title,
           }
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
-      case 'get_token': {
+      case 'get_channels': {
+        const { data: rows } = await supabase
+          .from('youtube_tokens')
+          .select('id, channel_id, channel_title, created_at');
+
+        return new Response(JSON.stringify({
+          success: true,
+          data: { channels: (rows || []).map(r => ({ id: r.id, channelId: r.channel_id, channelTitle: r.channel_title, createdAt: r.created_at })) }
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      case 'get_channel_analytics': {
+        if (!channelTokenId) throw new Error('channelTokenId is required');
+
         const { data: row } = await supabase
           .from('youtube_tokens')
           .select('*')
-          .limit(1)
+          .eq('id', channelTokenId)
           .maybeSingle();
 
-        if (!row) {
-          return new Response(JSON.stringify({ success: false, error: 'No YouTube account connected' }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
+        if (!row) throw new Error('Channel not found');
 
         let accessToken = row.access_token;
         const expiry = new Date(row.token_expiry);
 
-        // Refresh if expired or about to expire (within 60s)
+        // Refresh if needed
         if (expiry < new Date(Date.now() + 60000)) {
           const refreshRes = await fetch('https://oauth2.googleapis.com/token', {
             method: 'POST',
@@ -199,8 +207,95 @@ serve(async (req) => {
             }),
           });
           const refreshData = await refreshRes.json();
-          if (!refreshRes.ok) throw new Error(`Token refresh failed: ${JSON.stringify(refreshData)}`);
+          if (!refreshRes.ok) throw new Error('Token refresh failed');
+          accessToken = refreshData.access_token;
+          await supabase.from('youtube_tokens').update({
+            access_token: accessToken,
+            token_expiry: new Date(Date.now() + refreshData.expires_in * 1000).toISOString(),
+          }).eq('id', row.id);
+        }
 
+        // Get channel stats
+        const channelRes = await fetch(
+          `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id=${row.channel_id}`,
+          { headers: { Authorization: `Bearer ${accessToken}` } }
+        );
+        const channelData = await channelRes.json();
+        const channel = channelData.items?.[0];
+
+        // Get recent videos
+        const videosRes = await fetch(
+          `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${row.channel_id}&order=date&maxResults=10&type=video`,
+          { headers: { Authorization: `Bearer ${accessToken}` } }
+        );
+        const videosData = await videosRes.json();
+        const videoIds = (videosData.items || []).map((v: any) => v.id?.videoId).filter(Boolean).join(',');
+
+        let videos: any[] = [];
+        if (videoIds) {
+          const statsRes = await fetch(
+            `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${videoIds}`,
+            { headers: { Authorization: `Bearer ${accessToken}` } }
+          );
+          const statsData = await statsRes.json();
+          videos = (statsData.items || []).map((v: any) => ({
+            id: v.id,
+            title: v.snippet?.title,
+            thumbnail: v.snippet?.thumbnails?.medium?.url || v.snippet?.thumbnails?.default?.url,
+            publishedAt: v.snippet?.publishedAt,
+            viewCount: parseInt(v.statistics?.viewCount || '0'),
+            likeCount: parseInt(v.statistics?.likeCount || '0'),
+            commentCount: parseInt(v.statistics?.commentCount || '0'),
+            duration: v.contentDetails?.duration,
+          }));
+        }
+
+        return new Response(JSON.stringify({
+          success: true,
+          data: {
+            channel: {
+              id: channel?.id,
+              title: channel?.snippet?.title,
+              thumbnail: channel?.snippet?.thumbnails?.default?.url,
+              subscriberCount: parseInt(channel?.statistics?.subscriberCount || '0'),
+              videoCount: parseInt(channel?.statistics?.videoCount || '0'),
+              viewCount: parseInt(channel?.statistics?.viewCount || '0'),
+            },
+            videos,
+          }
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      case 'get_token': {
+        // For upload - accepts optional channelTokenId to pick which channel
+        const query = channelTokenId
+          ? supabase.from('youtube_tokens').select('*').eq('id', channelTokenId).maybeSingle()
+          : supabase.from('youtube_tokens').select('*').limit(1).maybeSingle();
+
+        const { data: row } = await query;
+
+        if (!row) {
+          return new Response(JSON.stringify({ success: false, error: 'No YouTube account connected' }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        let accessToken = row.access_token;
+        const expiry = new Date(row.token_expiry);
+
+        if (expiry < new Date(Date.now() + 60000)) {
+          const refreshRes = await fetch('https://oauth2.googleapis.com/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+              client_id: GOOGLE_CLIENT_ID,
+              client_secret: GOOGLE_CLIENT_SECRET,
+              refresh_token: row.refresh_token,
+              grant_type: 'refresh_token',
+            }),
+          });
+          const refreshData = await refreshRes.json();
+          if (!refreshRes.ok) throw new Error('Token refresh failed');
           accessToken = refreshData.access_token;
           await supabase.from('youtube_tokens').update({
             access_token: accessToken,
@@ -210,18 +305,18 @@ serve(async (req) => {
 
         return new Response(JSON.stringify({
           success: true,
-          data: {
-            accessToken,
-            channelId: row.channel_id,
-            channelTitle: row.channel_title,
-          }
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+          data: { accessToken, channelId: row.channel_id, channelTitle: row.channel_title }
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
       case 'disconnect': {
-        await supabase.from('youtube_tokens').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        if (channelTokenId) {
+          // Disconnect specific channel
+          await supabase.from('youtube_tokens').delete().eq('id', channelTokenId);
+        } else {
+          // Disconnect all
+          await supabase.from('youtube_tokens').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        }
         return new Response(JSON.stringify({ success: true }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
