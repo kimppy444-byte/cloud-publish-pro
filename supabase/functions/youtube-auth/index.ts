@@ -25,6 +25,48 @@ serve(async (req) => {
     const { action, code, redirectUri } = await req.json();
 
     switch (action) {
+      case 'validate': {
+        // Pre-flight validation of OAuth configuration
+        const issues: string[] = [];
+
+        if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.trim() === '') {
+          issues.push('GOOGLE_CLIENT_ID is not set');
+        } else if (!GOOGLE_CLIENT_ID.endsWith('.apps.googleusercontent.com')) {
+          issues.push('GOOGLE_CLIENT_ID format appears invalid — it should end with ".apps.googleusercontent.com"');
+        }
+
+        if (!GOOGLE_CLIENT_SECRET || GOOGLE_CLIENT_SECRET.trim() === '') {
+          issues.push('GOOGLE_CLIENT_SECRET is not set');
+        } else if (GOOGLE_CLIENT_SECRET.length < 10) {
+          issues.push('GOOGLE_CLIENT_SECRET appears too short — verify the value in your Google Cloud Console');
+        }
+
+        if (redirectUri) {
+          // Check redirect URI matches expected pattern
+          try {
+            const url = new URL(redirectUri);
+            if (!url.pathname.endsWith('/youtube-callback')) {
+              issues.push(`Redirect URI path should end with "/youtube-callback" — got "${url.pathname}"`);
+            }
+          } catch {
+            issues.push(`Redirect URI is not a valid URL: "${redirectUri}"`);
+          }
+        }
+
+        return new Response(JSON.stringify({
+          success: issues.length === 0,
+          data: {
+            valid: issues.length === 0,
+            issues,
+            clientIdConfigured: !!GOOGLE_CLIENT_ID,
+            clientIdPrefix: GOOGLE_CLIENT_ID ? GOOGLE_CLIENT_ID.substring(0, 8) + '...' : null,
+            redirectUri: redirectUri || null,
+          }
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       case 'get_auth_url': {
         if (!redirectUri) throw new Error('redirectUri is required');
         const scopes = [
@@ -60,7 +102,22 @@ serve(async (req) => {
           }),
         });
         const tokens = await tokenRes.json();
-        if (!tokenRes.ok) throw new Error(`Google OAuth error: ${JSON.stringify(tokens)}`);
+        if (!tokenRes.ok) {
+          // Provide user-friendly error messages for common OAuth errors
+          const errorCode = tokens.error;
+          const errorDesc = tokens.error_description || '';
+          let friendlyMessage = `Google OAuth error: ${errorCode}`;
+
+          if (errorCode === 'invalid_client') {
+            friendlyMessage = 'Invalid OAuth credentials. Please verify your Google Client ID and Client Secret are correct in your project secrets. They must match the credentials in your Google Cloud Console.';
+          } else if (errorCode === 'redirect_uri_mismatch') {
+            friendlyMessage = `Redirect URI mismatch. The URI "${redirectUri}" is not registered in your Google Cloud Console. Go to APIs & Services → Credentials → your OAuth client → Authorized redirect URIs and add this exact URI.`;
+          } else if (errorCode === 'invalid_grant') {
+            friendlyMessage = 'Authorization code expired or already used. Please try connecting again.';
+          }
+
+          throw new Error(friendlyMessage);
+        }
 
         // Get channel info
         const channelRes = await fetch(

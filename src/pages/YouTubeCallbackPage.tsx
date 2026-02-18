@@ -9,6 +9,7 @@ const YouTubeCallbackPage = () => {
   const navigate = useNavigate();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('');
+  const [helpText, setHelpText] = useState('');
 
   useEffect(() => {
     const code = searchParams.get('code');
@@ -27,7 +28,7 @@ const YouTubeCallbackPage = () => {
     }
 
     const exchange = async () => {
-      const redirectUri = 'https://social-media-flock.lovable.app/youtube-callback';
+      const redirectUri = `${window.location.origin}/youtube-callback`;
       const res = await exchangeYouTubeCode(code, redirectUri);
       if (res.success) {
         setStatus('success');
@@ -35,7 +36,16 @@ const YouTubeCallbackPage = () => {
         setTimeout(() => navigate('/settings'), 2000);
       } else {
         setStatus('error');
-        setMessage(res.error || 'Failed to connect YouTube account');
+        // Provide actionable guidance based on the error
+        const errMsg = res.error || 'Failed to connect YouTube account';
+        setMessage(errMsg);
+        if (errMsg.includes('invalid_client')) {
+          setHelpText('Your Google Client ID or Secret is incorrect. Update them in your project secrets, ensuring they match your Google Cloud Console credentials.');
+        } else if (errMsg.includes('redirect_uri_mismatch') || errMsg.includes('Redirect URI')) {
+          setHelpText(`Add this exact URI to your Google Cloud Console → APIs & Services → Credentials → Authorized redirect URIs: ${window.location.origin}/youtube-callback`);
+        } else if (errMsg.includes('invalid_grant')) {
+          setHelpText('The authorization code expired. Try connecting again from Settings.');
+        }
       }
     };
 
@@ -64,6 +74,12 @@ const YouTubeCallbackPage = () => {
             <XCircle className="w-10 h-10 text-destructive mx-auto" />
             <p className="font-medium text-foreground">Connection Failed</p>
             <p className="text-sm text-muted-foreground">{message}</p>
+            {helpText && (
+              <div className="bg-muted rounded-lg p-3 text-left">
+                <p className="text-xs font-medium text-foreground mb-1">💡 How to fix:</p>
+                <p className="text-xs text-muted-foreground break-all">{helpText}</p>
+              </div>
+            )}
             <Button variant="outline" onClick={() => navigate('/settings')}>
               Back to Settings
             </Button>
