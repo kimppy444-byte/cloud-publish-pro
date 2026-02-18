@@ -4,22 +4,68 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Youtube, Facebook, Instagram, Key, User, Upload, Settings as SettingsIcon, Trash2, Plus } from "lucide-react";
+import { Facebook, Instagram, Key, User, Upload, Settings as SettingsIcon, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
+import { useEffect, useState } from "react";
+import { getFacebookPages, getInstagramAccount } from "@/lib/facebook-api";
 
-const connectedAccounts = [
-  { name: "Main Channel", platform: "YouTube", icon: Youtube, email: "main@example.com" },
-  { name: "Tutorials Channel", platform: "YouTube", icon: Youtube, email: "tutorials@example.com" },
-  { name: "Company Page", platform: "Facebook", icon: Facebook, email: "company@example.com" },
-  { name: "Brand Account", platform: "Instagram", icon: Instagram, email: "brand@example.com" },
-];
+interface ConnectedAccount {
+  id: string;
+  name: string;
+  platform: "Facebook" | "Instagram";
+  detail: string;
+  picture?: string;
+}
 
 const SettingsPage = () => {
+  const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
+  const [loadingAccounts, setLoadingAccounts] = useState(true);
+
+  useEffect(() => {
+    const loadAccounts = async () => {
+      setLoadingAccounts(true);
+      const res = await getFacebookPages();
+      if (!res.success) {
+        setLoadingAccounts(false);
+        return;
+      }
+      const pages = res.data?.data || [];
+      const accs: ConnectedAccount[] = [];
+
+      for (const page of pages) {
+        accs.push({
+          id: `fb-${page.id}`,
+          name: page.name,
+          platform: "Facebook",
+          detail: `${page.category || 'Page'} · ${page.fan_count?.toLocaleString() || 0} followers`,
+          picture: page.picture?.data?.url,
+        });
+
+        const igRes = await getInstagramAccount(page.id, page.access_token);
+        if (igRes.success && igRes.data?.instagram_business_account) {
+          const ig = igRes.data.instagram_business_account;
+          accs.push({
+            id: `ig-${ig.id}`,
+            name: ig.name || ig.username || page.name,
+            platform: "Instagram",
+            detail: `@${ig.username} · ${ig.followers_count?.toLocaleString() || 0} followers`,
+            picture: ig.profile_picture_url,
+          });
+        }
+      }
+
+      setAccounts(accs);
+      setLoadingAccounts(false);
+    };
+
+    loadAccounts();
+  }, []);
+
   return (
     <div className="space-y-8 max-w-4xl">
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="space-y-1">
         <h1 className="text-3xl font-display font-bold text-foreground">Settings</h1>
-        <p className="text-muted-foreground">Manage your accounts, defaults, and API configuration</p>
+        <p className="text-muted-foreground">Manage your accounts, defaults, and configuration</p>
       </motion.div>
 
       <Tabs defaultValue="accounts" className="space-y-6">
@@ -32,9 +78,9 @@ const SettingsPage = () => {
             <Upload className="w-4 h-4 mr-2" />
             Upload Defaults
           </TabsTrigger>
-          <TabsTrigger value="api" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+          <TabsTrigger value="connections" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <Key className="w-4 h-4 mr-2" />
-            API Clients
+            Connections
           </TabsTrigger>
           <TabsTrigger value="general" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <SettingsIcon className="w-4 h-4 mr-2" />
@@ -42,33 +88,49 @@ const SettingsPage = () => {
           </TabsTrigger>
         </TabsList>
 
-        {/* Accounts Tab */}
+        {/* Accounts Tab - shows REAL connected accounts */}
         <TabsContent value="accounts">
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-xl shadow-card border border-border/50">
-            <div className="p-5 border-b border-border flex items-center justify-between">
+            <div className="p-5 border-b border-border">
               <h2 className="font-display font-semibold text-foreground">Connected Accounts</h2>
-              <Button size="sm" variant="outline" onClick={() => toast.info("Account connection coming soon! Configure your API credentials in the API Clients tab first.")}>
-                <Plus className="w-4 h-4 mr-2" /> Connect Account
-              </Button>
+              <p className="text-sm text-muted-foreground mt-1">Pages and accounts linked via your Facebook access token</p>
             </div>
-            <div className="divide-y divide-border">
-              {connectedAccounts.map((acc) => (
-                <div key={acc.name} className="px-5 py-4 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center">
-                      <acc.icon className="w-4 h-4 text-muted-foreground" />
+            {loadingAccounts ? (
+              <div className="p-12 flex justify-center">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : accounts.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground text-sm">
+                No accounts found. Make sure your Facebook API key is configured correctly.
+              </div>
+            ) : (
+              <div className="divide-y divide-border">
+                {accounts.map((acc) => (
+                  <div key={acc.id} className="px-5 py-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {acc.picture ? (
+                        <img src={acc.picture} alt="" className="w-9 h-9 rounded-lg object-cover" />
+                      ) : (
+                        <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center">
+                          {acc.platform === "Instagram" ? (
+                            <Instagram className="w-4 h-4 text-instagram" />
+                          ) : (
+                            <Facebook className="w-4 h-4 text-facebook" />
+                          )}
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{acc.name}</p>
+                        <p className="text-xs text-muted-foreground">{acc.platform} · {acc.detail}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{acc.name}</p>
-                      <p className="text-xs text-muted-foreground">{acc.platform} · {acc.email}</p>
-                    </div>
+                    <span className="text-xs text-success flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Connected
+                    </span>
                   </div>
-                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => toast.info(`Disconnect ${acc.name} coming soon.`)}>
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </motion.div>
         </TabsContent>
 
@@ -102,39 +164,42 @@ const SettingsPage = () => {
           </motion.div>
         </TabsContent>
 
-        {/* API Clients Tab */}
-        <TabsContent value="api">
+        {/* Connections Tab - shows status of API connections */}
+        <TabsContent value="connections">
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-xl p-6 shadow-card border border-border/50 space-y-5">
-            <h2 className="font-display font-semibold text-foreground">API Credentials</h2>
-            <p className="text-sm text-muted-foreground">Manage your API keys for each platform</p>
+            <h2 className="font-display font-semibold text-foreground">Platform Connections</h2>
+            <p className="text-sm text-muted-foreground">Status of your API connections</p>
             <div className="space-y-4">
-              <div className="p-4 rounded-lg border border-border space-y-3">
-                <div className="flex items-center gap-2">
-                  <Youtube className="w-4 h-4 text-youtube" />
-                  <span className="text-sm font-medium text-foreground">YouTube Data API v3</span>
+              <div className="p-4 rounded-lg border border-border flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Facebook className="w-5 h-5 text-facebook" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Facebook & Instagram</p>
+                    <p className="text-xs text-muted-foreground">Graph API via access token</p>
+                  </div>
                 </div>
-                <Input placeholder="Google OAuth Client ID" type="password" />
-                <Input placeholder="Google OAuth Client Secret" type="password" />
+                <span className="text-xs text-success flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Connected
+                </span>
               </div>
-              <div className="p-4 rounded-lg border border-border space-y-3">
-                <div className="flex items-center gap-2">
-                  <Facebook className="w-4 h-4 text-facebook" />
-                  <span className="text-sm font-medium text-foreground">Facebook Graph API</span>
+              <div className="p-4 rounded-lg border border-border flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 flex items-center justify-center">
+                    <svg viewBox="0 0 24 24" className="w-5 h-5 text-youtube" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.546 12 3.546 12 3.546s-7.505 0-9.377.504A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.504 9.376.504 9.376.504s7.505 0 9.377-.504a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">YouTube</p>
+                    <p className="text-xs text-muted-foreground">Google OAuth configured</p>
+                  </div>
                 </div>
-                <Input placeholder="App ID" type="password" />
-                <Input placeholder="App Secret" type="password" />
-                <p className="text-xs text-success flex items-center gap-1">● Connected</p>
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <XCircle className="w-3.5 h-3.5" /> Not yet integrated
+                </span>
               </div>
-              <div className="p-4 rounded-lg border border-border space-y-3">
-                <div className="flex items-center gap-2">
-                  <Instagram className="w-4 h-4 text-instagram" />
-                  <span className="text-sm font-medium text-foreground">Instagram Graph API</span>
-                </div>
-                <Input placeholder="Uses Facebook App credentials" disabled />
-                <p className="text-xs text-muted-foreground">Instagram API uses your Facebook app credentials</p>
-              </div>
+              <p className="text-xs text-muted-foreground">
+                API credentials are securely stored in Lovable Cloud. To update them, contact support or reconfigure via the secrets manager.
+              </p>
             </div>
-            <Button className="bg-gradient-brand text-primary-foreground hover:opacity-90" onClick={() => toast.success("API settings saved!")}>Save API Settings</Button>
           </motion.div>
         </TabsContent>
 

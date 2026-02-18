@@ -1,25 +1,69 @@
 import { motion } from "framer-motion";
-import { Upload as UploadIcon, Youtube, Facebook, Instagram, Film, Plus, X, FileVideo } from "lucide-react";
+import { Upload as UploadIcon, Facebook, Instagram, Film, Plus, X, FileVideo, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
+import { getFacebookPages, getInstagramAccount } from "@/lib/facebook-api";
 
-const accounts = [
-  { id: "1", name: "Main Channel", platform: "youtube", icon: Youtube },
-  { id: "2", name: "Tutorials Channel", platform: "youtube", icon: Youtube },
-  { id: "3", name: "Company Page", platform: "facebook", icon: Facebook },
-  { id: "4", name: "Brand Account", platform: "instagram", icon: Instagram },
-];
+interface UploadDestination {
+  id: string;
+  name: string;
+  platform: "facebook" | "instagram";
+  picture?: string;
+  igUsername?: string;
+}
 
 const UploadPage = () => {
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [destinations, setDestinations] = useState<UploadDestination[]>([]);
+  const [loadingDestinations, setLoadingDestinations] = useState(true);
+
+  useEffect(() => {
+    const loadDestinations = async () => {
+      setLoadingDestinations(true);
+      const res = await getFacebookPages();
+      if (!res.success) {
+        setLoadingDestinations(false);
+        return;
+      }
+      const pages = res.data?.data || [];
+      const dests: UploadDestination[] = [];
+
+      for (const page of pages) {
+        dests.push({
+          id: `fb-${page.id}`,
+          name: page.name,
+          platform: "facebook",
+          picture: page.picture?.data?.url,
+        });
+
+        // Check for linked Instagram account
+        const igRes = await getInstagramAccount(page.id, page.access_token);
+        if (igRes.success && igRes.data?.instagram_business_account) {
+          const ig = igRes.data.instagram_business_account;
+          dests.push({
+            id: `ig-${ig.id}`,
+            name: ig.name || ig.username || page.name,
+            platform: "instagram",
+            picture: ig.profile_picture_url,
+            igUsername: ig.username,
+          });
+        }
+      }
+
+      setDestinations(dests);
+      setLoadingDestinations(false);
+    };
+
+    loadDestinations();
+  }, []);
 
   const handleFileSelect = (file: File) => {
     const validTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/webm'];
@@ -150,7 +194,7 @@ const UploadPage = () => {
         </div>
       </motion.div>
 
-      {/* Account selection */}
+      {/* Account selection - now using REAL pages */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
@@ -158,27 +202,46 @@ const UploadPage = () => {
         className="bg-card rounded-xl p-6 shadow-card border border-border/50 space-y-4"
       >
         <h2 className="font-display font-semibold text-foreground text-lg">Upload Destinations</h2>
-        <p className="text-sm text-muted-foreground">Select accounts to upload to simultaneously</p>
+        <p className="text-sm text-muted-foreground">Select pages to upload to simultaneously</p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {accounts.map((acc) => (
-            <label
-              key={acc.id}
-              className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                selectedAccounts.includes(acc.id)
-                  ? "border-primary bg-primary/5"
-                  : "border-border hover:border-muted-foreground/30"
-              }`}
-            >
-              <Checkbox
-                checked={selectedAccounts.includes(acc.id)}
-                onCheckedChange={() => toggleAccount(acc.id)}
-              />
-              <acc.icon className={`w-4 h-4 text-${acc.platform}`} />
-              <span className="text-sm font-medium text-foreground">{acc.name}</span>
-            </label>
-          ))}
-        </div>
+        {loadingDestinations ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : destinations.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4">No connected pages found. Check your Facebook API key configuration.</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {destinations.map((dest) => (
+              <label
+                key={dest.id}
+                className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                  selectedAccounts.includes(dest.id)
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-muted-foreground/30"
+                }`}
+              >
+                <Checkbox
+                  checked={selectedAccounts.includes(dest.id)}
+                  onCheckedChange={() => toggleAccount(dest.id)}
+                />
+                {dest.picture ? (
+                  <img src={dest.picture} alt="" className="w-5 h-5 rounded-full" />
+                ) : dest.platform === "instagram" ? (
+                  <Instagram className="w-4 h-4 text-instagram" />
+                ) : (
+                  <Facebook className="w-4 h-4 text-facebook" />
+                )}
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium text-foreground">{dest.name}</span>
+                  <span className="text-xs text-muted-foreground capitalize">
+                    {dest.platform}{dest.igUsername ? ` · @${dest.igUsername}` : ''}
+                  </span>
+                </div>
+              </label>
+            ))}
+          </div>
+        )}
       </motion.div>
 
       {/* Actions */}
@@ -188,7 +251,13 @@ const UploadPage = () => {
         transition={{ delay: 0.2 }}
         className="flex items-center gap-3"
       >
-        <Button size="lg" className="bg-gradient-brand text-primary-foreground hover:opacity-90">
+        <Button size="lg" className="bg-gradient-brand text-primary-foreground hover:opacity-90"
+          onClick={() => {
+            if (!selectedFile) { toast.error("Please select a video file first."); return; }
+            if (selectedAccounts.length === 0) { toast.error("Please select at least one destination."); return; }
+            toast.info("Video upload coming soon! The Facebook API requires additional setup for video publishing.");
+          }}
+        >
           <UploadIcon className="w-4 h-4 mr-2" />
           Upload to {selectedAccounts.length || 0} Account{selectedAccounts.length !== 1 ? "s" : ""}
         </Button>

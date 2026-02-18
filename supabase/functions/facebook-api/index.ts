@@ -18,13 +18,16 @@ serve(async (req) => {
       throw new Error('FACEBOOK_API_KEY is not configured');
     }
 
-    const { action, pageId, igAccountId } = await req.json();
+    const { action, pageId, igAccountId, pageAccessToken } = await req.json();
+
+    // For page-specific operations, use the page access token if provided, otherwise fall back to user token
+    const tokenForPageOps = pageAccessToken || FACEBOOK_API_KEY;
 
     let data: unknown;
 
     switch (action) {
       case 'get_pages': {
-        // Get all Facebook pages the user manages
+        // Always use user token to list pages
         const res = await fetch(
           `${GRAPH_API}/me/accounts?fields=id,name,access_token,picture,fan_count,category&access_token=${FACEBOOK_API_KEY}`
         );
@@ -35,8 +38,9 @@ serve(async (req) => {
 
       case 'get_page_videos': {
         if (!pageId) throw new Error('pageId is required');
+        // Use page access token for page-specific content
         const res = await fetch(
-          `${GRAPH_API}/${pageId}/videos?fields=id,title,description,length,created_time,views,likes.summary(true),comments.summary(true),thumbnails&limit=25&access_token=${FACEBOOK_API_KEY}`
+          `${GRAPH_API}/${pageId}/videos?fields=id,title,description,length,created_time,views,likes.summary(true),comments.summary(true),thumbnails&limit=25&access_token=${tokenForPageOps}`
         );
         data = await res.json();
         if (!res.ok) throw new Error(`Facebook API error [${res.status}]: ${JSON.stringify(data)}`);
@@ -46,7 +50,7 @@ serve(async (req) => {
       case 'get_page_insights': {
         if (!pageId) throw new Error('pageId is required');
         const res = await fetch(
-          `${GRAPH_API}/${pageId}?fields=id,name,fan_count,followers_count,engagement,picture&access_token=${FACEBOOK_API_KEY}`
+          `${GRAPH_API}/${pageId}?fields=id,name,fan_count,followers_count,engagement,picture&access_token=${tokenForPageOps}`
         );
         data = await res.json();
         if (!res.ok) throw new Error(`Facebook API error [${res.status}]: ${JSON.stringify(data)}`);
@@ -56,7 +60,7 @@ serve(async (req) => {
       case 'get_instagram_account': {
         if (!pageId) throw new Error('pageId is required');
         const res = await fetch(
-          `${GRAPH_API}/${pageId}?fields=instagram_business_account{id,name,username,profile_picture_url,followers_count,media_count}&access_token=${FACEBOOK_API_KEY}`
+          `${GRAPH_API}/${pageId}?fields=instagram_business_account{id,name,username,profile_picture_url,followers_count,media_count}&access_token=${tokenForPageOps}`
         );
         data = await res.json();
         if (!res.ok) throw new Error(`Facebook API error [${res.status}]: ${JSON.stringify(data)}`);
@@ -66,7 +70,7 @@ serve(async (req) => {
       case 'get_instagram_media': {
         if (!igAccountId) throw new Error('igAccountId is required');
         const res = await fetch(
-          `${GRAPH_API}/${igAccountId}/media?fields=id,caption,media_type,media_url,thumbnail_url,timestamp,like_count,comments_count,permalink&limit=25&access_token=${FACEBOOK_API_KEY}`
+          `${GRAPH_API}/${igAccountId}/media?fields=id,caption,media_type,media_url,thumbnail_url,timestamp,like_count,comments_count,permalink&limit=25&access_token=${tokenForPageOps}`
         );
         data = await res.json();
         if (!res.ok) throw new Error(`Facebook API error [${res.status}]: ${JSON.stringify(data)}`);

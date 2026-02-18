@@ -9,6 +9,7 @@ import { getFacebookPages, getPageVideos, getPageInsights, getInstagramAccount, 
 interface FbPage {
   id: string;
   name: string;
+  access_token?: string;
   fan_count?: number;
   category?: string;
   picture?: { data?: { url?: string } };
@@ -79,6 +80,12 @@ const SocialPage = () => {
     fetchPages();
   }, []);
 
+  // Get the page access token for the selected page
+  const getSelectedPageToken = (): string | undefined => {
+    const page = pages.find((p) => p.id === selectedPageId);
+    return page?.access_token;
+  };
+
   useEffect(() => {
     if (!selectedPageId) return;
 
@@ -87,10 +94,12 @@ const SocialPage = () => {
       setLoadingIg(true);
       setVideoError(null);
 
+      const pageToken = getSelectedPageToken();
+
       const [videosRes, igRes, insightsRes] = await Promise.all([
-        getPageVideos(selectedPageId),
-        getInstagramAccount(selectedPageId),
-        getPageInsights(selectedPageId),
+        getPageVideos(selectedPageId, pageToken),
+        getInstagramAccount(selectedPageId, pageToken),
+        getPageInsights(selectedPageId, pageToken),
       ]);
 
       if (videosRes.success) {
@@ -115,7 +124,7 @@ const SocialPage = () => {
       if (igRes.success && igRes.data?.instagram_business_account) {
         const igAcc = igRes.data.instagram_business_account;
         setIgAccount(igAcc);
-        const mediaRes = await getInstagramMedia(igAcc.id);
+        const mediaRes = await getInstagramMedia(igAcc.id, pageToken);
         if (mediaRes.success) {
           setIgMedia(mediaRes.data?.data || []);
         }

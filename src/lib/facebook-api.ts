@@ -13,7 +13,6 @@ export async function callFacebookApi(action: string, params: Record<string, str
     });
 
     if (error) {
-      // Try to extract the actual error message from the response context
       const context = (error as any)?.context;
       if (context && typeof context === 'object') {
         try {
@@ -38,20 +37,20 @@ export async function getFacebookPages() {
   return callFacebookApi('get_pages');
 }
 
-export async function getPageVideos(pageId: string) {
-  return callFacebookApi('get_page_videos', { pageId });
+export async function getPageVideos(pageId: string, pageAccessToken?: string) {
+  return callFacebookApi('get_page_videos', { pageId, ...(pageAccessToken ? { pageAccessToken } : {}) });
 }
 
-export async function getPageInsights(pageId: string) {
-  return callFacebookApi('get_page_insights', { pageId });
+export async function getPageInsights(pageId: string, pageAccessToken?: string) {
+  return callFacebookApi('get_page_insights', { pageId, ...(pageAccessToken ? { pageAccessToken } : {}) });
 }
 
-export async function getInstagramAccount(pageId: string) {
-  return callFacebookApi('get_instagram_account', { pageId });
+export async function getInstagramAccount(pageId: string, pageAccessToken?: string) {
+  return callFacebookApi('get_instagram_account', { pageId, ...(pageAccessToken ? { pageAccessToken } : {}) });
 }
 
-export async function getInstagramMedia(igAccountId: string) {
-  return callFacebookApi('get_instagram_media', { igAccountId });
+export async function getInstagramMedia(igAccountId: string, pageAccessToken?: string) {
+  return callFacebookApi('get_instagram_media', { igAccountId, ...(pageAccessToken ? { pageAccessToken } : {}) });
 }
 
 export async function getUserInfo() {
