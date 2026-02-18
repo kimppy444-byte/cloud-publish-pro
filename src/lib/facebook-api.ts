@@ -7,16 +7,31 @@ interface FacebookApiResponse {
 }
 
 export async function callFacebookApi(action: string, params: Record<string, string> = {}): Promise<FacebookApiResponse> {
-  const { data, error } = await supabase.functions.invoke('facebook-api', {
-    body: { action, ...params },
-  });
+  try {
+    const { data, error } = await supabase.functions.invoke('facebook-api', {
+      body: { action, ...params },
+    });
 
-  if (error) {
-    console.error('Edge function error:', error);
-    return { success: false, error: error.message };
+    if (error) {
+      // Try to extract the actual error message from the response context
+      const context = (error as any)?.context;
+      if (context && typeof context === 'object') {
+        try {
+          const body = await context.json?.();
+          if (body?.error) {
+            return { success: false, error: body.error };
+          }
+        } catch {}
+      }
+      console.error('Edge function error:', error);
+      return { success: false, error: error.message };
+    }
+
+    return data as FacebookApiResponse;
+  } catch (err: any) {
+    console.error('Facebook API call failed:', err);
+    return { success: false, error: err.message || 'Unknown error' };
   }
-
-  return data as FacebookApiResponse;
 }
 
 export async function getFacebookPages() {
