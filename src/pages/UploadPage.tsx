@@ -1,11 +1,12 @@
 import { motion } from "framer-motion";
-import { Upload as UploadIcon, Youtube, Facebook, Instagram, Film, Plus, X } from "lucide-react";
+import { Upload as UploadIcon, Youtube, Facebook, Instagram, Film, Plus, X, FileVideo } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { toast } from "sonner";
 
 const accounts = [
   { id: "1", name: "Main Channel", platform: "youtube", icon: Youtube },
@@ -17,6 +18,18 @@ const accounts = [
 const UploadPage = () => {
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
   const [dragOver, setDragOver] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = (file: File) => {
+    const validTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/webm'];
+    if (!validTypes.includes(file.type)) {
+      toast.error("Invalid file type. Please upload MP4, MOV, AVI, or WebM.");
+      return;
+    }
+    setSelectedFile(file);
+    toast.success(`Selected: ${file.name}`);
+  };
 
   const toggleAccount = (id: string) => {
     setSelectedAccounts((prev) =>
@@ -38,24 +51,48 @@ const UploadPage = () => {
         transition={{ delay: 0.05 }}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
-        onDrop={() => setDragOver(false)}
+        onDrop={(e) => { e.preventDefault(); setDragOver(false); const file = e.dataTransfer.files?.[0]; if (file) handleFileSelect(file); }}
+        onClick={() => fileInputRef.current?.click()}
         className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors cursor-pointer ${
           dragOver ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30"
         }`}
       >
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-14 h-14 rounded-xl bg-muted flex items-center justify-center">
-            <UploadIcon className="w-6 h-6 text-muted-foreground" />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="video/mp4,video/quicktime,video/x-msvideo,video/webm"
+          className="hidden"
+          onChange={(e) => { const file = e.target.files?.[0]; if (file) handleFileSelect(file); }}
+        />
+        {selectedFile ? (
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center">
+              <FileVideo className="w-6 h-6 text-primary" />
+            </div>
+            <div>
+              <p className="font-medium text-foreground">{selectedFile.name}</p>
+              <p className="text-sm text-muted-foreground mt-1">{(selectedFile.size / (1024 * 1024)).toFixed(1)} MB</p>
+            </div>
+            <Button variant="outline" size="sm" className="mt-2" onClick={(e) => { e.stopPropagation(); setSelectedFile(null); }}>
+              <X className="w-4 h-4 mr-2" />
+              Remove
+            </Button>
           </div>
-          <div>
-            <p className="font-medium text-foreground">Drop your video here or click to browse</p>
-            <p className="text-sm text-muted-foreground mt-1">MP4, MOV, AVI up to 10GB</p>
+        ) : (
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-14 h-14 rounded-xl bg-muted flex items-center justify-center">
+              <UploadIcon className="w-6 h-6 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="font-medium text-foreground">Drop your video here or click to browse</p>
+              <p className="text-sm text-muted-foreground mt-1">MP4, MOV, AVI, WebM up to 10GB</p>
+            </div>
+            <Button variant="outline" size="sm" className="mt-2" onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}>
+              <Plus className="w-4 h-4 mr-2" />
+              Select File
+            </Button>
           </div>
-          <Button variant="outline" size="sm" className="mt-2">
-            <Plus className="w-4 h-4 mr-2" />
-            Select File
-          </Button>
-        </div>
+        )}
       </motion.div>
 
       {/* Metadata */}

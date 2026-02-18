@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Youtube, Facebook, Instagram, Key, User, Upload, Settings as SettingsIcon, Trash2, Plus } from "lucide-react";
+import { toast } from "sonner";
 
 const connectedAccounts = [
   { name: "Main Channel", platform: "YouTube", icon: Youtube, email: "main@example.com" },
@@ -46,7 +47,7 @@ const SettingsPage = () => {
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-xl shadow-card border border-border/50">
             <div className="p-5 border-b border-border flex items-center justify-between">
               <h2 className="font-display font-semibold text-foreground">Connected Accounts</h2>
-              <Button size="sm" variant="outline">
+              <Button size="sm" variant="outline" onClick={() => toast.info("Account connection coming soon! Configure your API credentials in the API Clients tab first.")}>
                 <Plus className="w-4 h-4 mr-2" /> Connect Account
               </Button>
             </div>
@@ -62,7 +63,7 @@ const SettingsPage = () => {
                       <p className="text-xs text-muted-foreground">{acc.platform} · {acc.email}</p>
                     </div>
                   </div>
-                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => toast.info(`Disconnect ${acc.name} coming soon.`)}>
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
@@ -96,7 +97,7 @@ const SettingsPage = () => {
                 </div>
                 <Switch />
               </div>
-              <Button className="bg-gradient-brand text-primary-foreground hover:opacity-90">Save Defaults</Button>
+              <Button className="bg-gradient-brand text-primary-foreground hover:opacity-90" onClick={() => toast.success("Defaults saved!")}>Save Defaults</Button>
             </div>
           </motion.div>
         </TabsContent>
@@ -133,7 +134,7 @@ const SettingsPage = () => {
                 <p className="text-xs text-muted-foreground">Instagram API uses your Facebook app credentials</p>
               </div>
             </div>
-            <Button className="bg-gradient-brand text-primary-foreground hover:opacity-90">Save API Settings</Button>
+            <Button className="bg-gradient-brand text-primary-foreground hover:opacity-90" onClick={() => toast.success("API settings saved!")}>Save API Settings</Button>
           </motion.div>
         </TabsContent>
 
@@ -164,7 +165,7 @@ const SettingsPage = () => {
                 </div>
                 <Switch />
               </div>
-              <Button className="bg-gradient-brand text-primary-foreground hover:opacity-90">Save Settings</Button>
+              <Button className="bg-gradient-brand text-primary-foreground hover:opacity-90" onClick={() => toast.success("Settings saved!")}>Save Settings</Button>
             </div>
           </motion.div>
         </TabsContent>
