@@ -18,7 +18,8 @@ serve(async (req) => {
       throw new Error('FACEBOOK_API_KEY is not configured');
     }
 
-    const { action, pageId, igAccountId, pageAccessToken } = await req.json();
+    const body = await req.json();
+    const { action, pageId, igAccountId, pageAccessToken } = body;
 
     // For page-specific operations, use the page access token if provided, otherwise fall back to user token
     const tokenForPageOps = pageAccessToken || FACEBOOK_API_KEY;
@@ -82,6 +83,34 @@ serve(async (req) => {
         );
         data = await res.json();
         if (!res.ok) throw new Error(`Facebook API error [${res.status}]: ${JSON.stringify(data)}`);
+        break;
+      }
+
+      case 'post_facebook_comment': {
+        if (!body.objectId || !body.message) throw new Error('objectId and message are required');
+        const res = await fetch(`${GRAPH_API}/${body.objectId}/comments`, {
+          method: 'POST',
+          body: new URLSearchParams({
+            message: body.message,
+            access_token: tokenForPageOps,
+          }),
+        });
+        data = await res.json();
+        if (!res.ok) throw new Error(`Facebook comment error [${res.status}]: ${JSON.stringify(data)}`);
+        break;
+      }
+
+      case 'post_instagram_comment': {
+        if (!body.mediaId || !body.message) throw new Error('mediaId and message are required');
+        const res = await fetch(`${GRAPH_API}/${body.mediaId}/comments`, {
+          method: 'POST',
+          body: new URLSearchParams({
+            message: body.message,
+            access_token: tokenForPageOps,
+          }),
+        });
+        data = await res.json();
+        if (!res.ok) throw new Error(`Instagram comment error [${res.status}]: ${JSON.stringify(data)}`);
         break;
       }
 

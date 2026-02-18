@@ -37,10 +37,18 @@ export async function getYouTubeStatus() {
   return invokeYouTubeAuth({ action: 'get_status' });
 }
 
+export async function getYouTubeChannels() {
+  return invokeYouTubeAuth({ action: 'get_channels' });
+}
+
+export async function getYouTubeChannelAnalytics(channelTokenId: string) {
+  return invokeYouTubeAuth({ action: 'get_channel_analytics', channelTokenId });
+}
+
 export async function validateYouTubeConfig(redirectUri: string) {
   return invokeYouTubeAuth({ action: 'validate', redirectUri });
 }
 
-export async function disconnectYouTube() {
-  return invokeYouTubeAuth({ action: 'disconnect' });
+export async function disconnectYouTube(channelTokenId?: string) {
+  return invokeYouTubeAuth({ action: 'disconnect', channelTokenId });
 }
