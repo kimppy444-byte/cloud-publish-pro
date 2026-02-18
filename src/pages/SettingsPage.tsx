@@ -81,7 +81,7 @@ const SettingsPage = () => {
 
   const handleConnectYouTube = async () => {
     setConnectingYt(true);
-    const redirectUri = `${window.location.origin}/youtube-callback`;
+    const redirectUri = 'https://social-media-flock.lovable.app/youtube-callback';
     const res = await getYouTubeAuthUrl(redirectUri);
     if (res.success && res.data?.url) {
       window.location.href = res.data.url;

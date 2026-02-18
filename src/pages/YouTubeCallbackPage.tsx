@@ -27,7 +27,7 @@ const YouTubeCallbackPage = () => {
     }
 
     const exchange = async () => {
-      const redirectUri = `${window.location.origin}/youtube-callback`;
+      const redirectUri = 'https://social-media-flock.lovable.app/youtube-callback';
       const res = await exchangeYouTubeCode(code, redirectUri);
       if (res.success) {
         setStatus('success');

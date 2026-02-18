@@ -59,11 +59,19 @@ serve(async (req) => {
 
       case 'get_instagram_account': {
         if (!pageId) throw new Error('pageId is required');
+        // Query both instagram_business_account AND connected_instagram_account
+        // to cover both Business and Professional/Creator IG accounts
         const res = await fetch(
-          `${GRAPH_API}/${pageId}?fields=instagram_business_account{id,name,username,profile_picture_url,followers_count,media_count}&access_token=${tokenForPageOps}`
+          `${GRAPH_API}/${pageId}?fields=instagram_business_account{id,name,username,profile_picture_url,followers_count,media_count},connected_instagram_account{id,name,username,profile_picture_url,followers_count,media_count}&access_token=${tokenForPageOps}`
         );
-        data = await res.json();
-        if (!res.ok) throw new Error(`Facebook API error [${res.status}]: ${JSON.stringify(data)}`);
+        const rawData = await res.json();
+        if (!res.ok) throw new Error(`Facebook API error [${res.status}]: ${JSON.stringify(rawData)}`);
+        
+        // If no instagram_business_account, fall back to connected_instagram_account
+        if (!rawData.instagram_business_account && rawData.connected_instagram_account) {
+          rawData.instagram_business_account = rawData.connected_instagram_account;
+        }
+        data = rawData;
         break;
       }
 
