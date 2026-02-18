@@ -7,8 +7,7 @@ import AppLayout from "./components/AppLayout";
 import Index from "./pages/Index";
 import UploadPage from "./pages/UploadPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
-import FacebookPage from "./pages/FacebookPage";
-import InstagramPage from "./pages/InstagramPage";
+import SocialPage from "./pages/SocialPage";
 import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
 
@@ -25,8 +24,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/upload" element={<UploadPage />} />
             <Route path="/analytics" element={<AnalyticsPage />} />
-            <Route path="/facebook" element={<FacebookPage />} />
-            <Route path="/instagram" element={<InstagramPage />} />
+            <Route path="/social" element={<SocialPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>
           <Route path="*" element={<NotFound />} />

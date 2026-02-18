@@ -5,7 +5,6 @@ import {
   Upload,
   BarChart3,
   Facebook,
-  Instagram,
   Settings,
   Youtube,
   ChevronLeft,
@@ -18,8 +17,7 @@ const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/upload", icon: Upload, label: "Upload" },
   { to: "/analytics", icon: BarChart3, label: "Analytics" },
-  { to: "/facebook", icon: Facebook, label: "Facebook" },
-  { to: "/instagram", icon: Instagram, label: "Instagram" },
+  { to: "/social", icon: Facebook, label: "Facebook & IG" },
   { to: "/settings", icon: Settings, label: "Settings" },
 ];
 
