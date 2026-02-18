@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Facebook, Instagram, Eye, ThumbsUp, Share2, Heart, MessageCircle, Video, RefreshCw, AlertCircle, Loader2 } from "lucide-react";
+import { Facebook, Instagram, Eye, ThumbsUp, Share2, Heart, MessageCircle, Video, RefreshCw, AlertCircle, Loader2, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import StatCard from "@/components/StatCard";
@@ -56,6 +56,7 @@ const SocialPage = () => {
   const [loadingVideos, setLoadingVideos] = useState(false);
   const [loadingIg, setLoadingIg] = useState(false);
   const [pageInsights, setPageInsights] = useState<any>(null);
+  const [videoError, setVideoError] = useState<string | null>(null);
 
   const fetchPages = async () => {
     setLoading(true);
@@ -84,6 +85,7 @@ const SocialPage = () => {
     const loadPageData = async () => {
       setLoadingVideos(true);
       setLoadingIg(true);
+      setVideoError(null);
 
       const [videosRes, igRes, insightsRes] = await Promise.all([
         getPageVideos(selectedPageId),
@@ -93,6 +95,16 @@ const SocialPage = () => {
 
       if (videosRes.success) {
         setFbVideos(videosRes.data?.data || []);
+      } else if (
+        videosRes.error?.includes('Missing Permissions') || 
+        videosRes.error?.includes('(#200)') ||
+        videosRes.error?.includes('non-2xx')
+      ) {
+        setVideoError('Your token needs the pages_read_content permission to fetch videos. You can update it in your Facebook App settings.');
+        setFbVideos([]);
+      } else {
+        setVideoError(videosRes.error || 'Failed to load videos');
+        setFbVideos([]);
       }
       setLoadingVideos(false);
 
@@ -250,6 +262,12 @@ const SocialPage = () => {
             </div>
             {loadingVideos ? (
               <div className="p-12 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+            ) : videoError ? (
+              <div className="p-8 text-center space-y-2">
+                <ShieldAlert className="w-8 h-8 text-warning mx-auto" />
+                <p className="text-sm font-medium text-foreground">Permission Required</p>
+                <p className="text-xs text-muted-foreground max-w-md mx-auto">{videoError}</p>
+              </div>
             ) : fbVideos.length === 0 ? (
               <div className="p-12 text-center text-muted-foreground text-sm">No videos found on this page</div>
             ) : (
