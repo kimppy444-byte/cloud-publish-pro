@@ -9,6 +9,7 @@ import UploadPage from "./pages/UploadPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
 import SocialPage from "./pages/SocialPage";
 import SettingsPage from "./pages/SettingsPage";
+import YouTubeCallbackPage from "./pages/YouTubeCallbackPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,6 +28,7 @@ const App = () => (
             <Route path="/social" element={<SocialPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>
+          <Route path="/youtube-callback" element={<YouTubeCallbackPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
