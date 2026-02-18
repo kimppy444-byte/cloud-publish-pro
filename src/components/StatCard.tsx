@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { LucideIcon } from "lucide-react";
 import { motion } from "framer-motion";
+import { forwardRef } from "react";
 
 interface StatCardProps {
   title: string;
@@ -17,9 +18,10 @@ const platformColors = {
   instagram: "text-instagram",
 };
 
-const StatCard = ({ title, value, change, changeType = "neutral", icon: Icon, platform }: StatCardProps) => {
+const StatCard = forwardRef<HTMLDivElement, StatCardProps>(({ title, value, change, changeType = "neutral", icon: Icon, platform }, ref) => {
   return (
     <motion.div
+      ref={ref}
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       className="bg-card rounded-xl p-5 shadow-card border border-border/50 hover:border-border transition-colors"
@@ -50,6 +52,8 @@ const StatCard = ({ title, value, change, changeType = "neutral", icon: Icon, pl
       </div>
     </motion.div>
   );
-};
+});
+
+StatCard.displayName = "StatCard";
 
 export default StatCard;
