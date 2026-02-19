@@ -49,14 +49,18 @@ const VideoEditor = ({ file, onSave, onCancel }: VideoEditorProps) => {
 
     // Multi-threaded sources (require SharedArrayBuffer)
     const MT_SOURCES = [
-      { name: "jsdelivr", url: "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd" },
-      { name: "unpkg", url: "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd" },
+      { name: "jsdelivr", url: "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd" },
+      { name: "unpkg", url: "https://unpkg.com/@ffmpeg/core@0.12.10/dist/umd" },
     ];
 
     // Single-threaded sources (no SharedArrayBuffer needed - works in iframes)
+    // @ffmpeg/core@0.12.10/dist/esm works without SharedArrayBuffer
+    // @ffmpeg/core-st@0.11.1 is the last published single-thread package
     const ST_SOURCES = [
-      { name: "jsdelivr-st", url: "https://cdn.jsdelivr.net/npm/@ffmpeg/core-st@0.12.6/dist/umd" },
-      { name: "unpkg-st", url: "https://unpkg.com/@ffmpeg/core-st@0.12.6/dist/umd" },
+      { name: "jsdelivr-esm", url: "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm" },
+      { name: "unpkg-esm", url: "https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm" },
+      { name: "jsdelivr-st-011", url: "https://cdn.jsdelivr.net/npm/@ffmpeg/core-st@0.11.1/dist/umd" },
+      { name: "unpkg-st-011", url: "https://unpkg.com/@ffmpeg/core-st@0.11.1/dist/umd" },
     ];
 
     // Try multi-threaded first if supported, then fall back to single-threaded
