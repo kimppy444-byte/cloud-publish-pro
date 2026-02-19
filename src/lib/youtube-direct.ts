@@ -46,6 +46,8 @@ export interface UploadDefaults {
   socialUnlockEnabled?: boolean;
   socialUnlockTargetUrl?: string;
   socialUnlockActions?: SocialUnlockActions;
+  socialUnlockHeader?: string; // e.g. "🎁 UNLOCK EXCLUSIVE CONTENT"
+  socialUnlockBody?: string;   // e.g. "Unlock exclusive content!\n\nComplete the required actions to access:"
 }
 
 export function getUploadDefaults(channelId?: string): UploadDefaults | null {

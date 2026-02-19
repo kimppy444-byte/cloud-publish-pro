@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import {
   Video, Eye, ThumbsUp, MessageCircle, Pencil, Trash2, ExternalLink,
-  RefreshCw, Globe, Lock, Users, Search, CheckSquare, Loader2, Save
+  RefreshCw, Globe, Lock, Users, Search, CheckSquare, Loader2, Save, Languages
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { getYouTubeChannels } from "@/lib/youtube-api";
 import { supabase } from "@/integrations/supabase/client";
 import { BatchActionsBar } from "@/components/BatchActionsBar";
+import { translateText } from "@/lib/smart-link-api";
 
 interface VideoData {
   id: string;
@@ -57,6 +58,32 @@ const MyVideosPage = () => {
   const [editDescription, setEditDescription] = useState("");
   const [editPrivacy, setEditPrivacy] = useState("public");
   const [isSaving, setIsSaving] = useState(false);
+  const [translating, setTranslating] = useState(false);
+  const [translateLang, setTranslateLang] = useState("es");
+
+  const LANGUAGES = [
+    { code: "es", name: "Spanish" }, { code: "pt", name: "Portuguese" },
+    { code: "fr", name: "French" }, { code: "de", name: "German" },
+    { code: "it", name: "Italian" }, { code: "zh", name: "Chinese" },
+    { code: "ja", name: "Japanese" }, { code: "ko", name: "Korean" },
+    { code: "ar", name: "Arabic" }, { code: "ru", name: "Russian" },
+    { code: "hi", name: "Hindi" }, { code: "tr", name: "Turkish" },
+    { code: "nl", name: "Dutch" }, { code: "pl", name: "Polish" },
+  ];
+
+  const handleTranslateDescription = async () => {
+    if (!editDescription) { toast.error("No description to translate"); return; }
+    setTranslating(true);
+    const langName = LANGUAGES.find(l => l.code === translateLang)?.name || translateLang;
+    const res = await translateText(editDescription, langName);
+    if (res.success && res.translatedText) {
+      setEditDescription(res.translatedText);
+      toast.success(`Translated to ${langName}!`);
+    } else {
+      toast.error(`Translation failed: ${res.error}`);
+    }
+    setTranslating(false);
+  };
 
   // Delete dialog
   const [deleteVideoId, setDeleteVideoId] = useState<string | null>(null);
@@ -350,7 +377,25 @@ const MyVideosPage = () => {
               <Input value={editTitle} onChange={e => setEditTitle(e.target.value)} />
             </div>
             <div>
-              <label className="text-sm font-medium text-foreground block mb-1.5">Description</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-sm font-medium text-foreground">Description</label>
+                <div className="flex items-center gap-1.5">
+                  <Select value={translateLang} onValueChange={setTranslateLang}>
+                    <SelectTrigger className="h-7 text-xs w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {LANGUAGES.map(l => (
+                        <SelectItem key={l.code} value={l.code}>{l.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button variant="outline" size="sm" className="h-7 text-xs px-2" onClick={handleTranslateDescription} disabled={translating || !editDescription}>
+                    {translating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Languages className="w-3 h-3" />}
+                    <span className="ml-1">Translate</span>
+                  </Button>
+                </div>
+              </div>
               <Textarea value={editDescription} onChange={e => setEditDescription(e.target.value)} rows={5} />
             </div>
             <div>
