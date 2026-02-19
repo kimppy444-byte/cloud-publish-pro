@@ -45,25 +45,37 @@ const VideoEditor = ({ file, onSave, onCancel }: VideoEditorProps) => {
   }, []);
 
   const loadFFmpeg = async () => {
-    try {
-      const ffmpeg = new FFmpeg();
-      ffmpegRef.current = ffmpeg;
+    const CDN_SOURCES = [
+      "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd",
+      "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd",
+      "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.4/dist/umd",
+    ];
 
-      ffmpeg.on("log", ({ message }) => {
-        console.log("FFmpeg:", message);
-      });
+    for (const baseURL of CDN_SOURCES) {
+      try {
+        const ffmpeg = new FFmpeg();
+        ffmpeg.on("log", ({ message }) => {
+          console.log("FFmpeg:", message);
+        });
 
-      const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd";
-      await ffmpeg.load({
-        coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
-        wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
-      });
+        const [coreURL, wasmURL] = await Promise.all([
+          toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
+          toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
+        ]);
 
-      setFfmpegLoaded(true);
-    } catch (error) {
-      console.error("Error loading FFmpeg:", error);
-      setLoadError("FFmpeg failed to load. Video editing may not work in this browser.");
+        await ffmpeg.load({ coreURL, wasmURL });
+
+        ffmpegRef.current = ffmpeg;
+        setFfmpegLoaded(true);
+        setLoadError("");
+        console.log("FFmpeg loaded from:", baseURL);
+        return;
+      } catch (error) {
+        console.warn(`FFmpeg load failed from ${baseURL}:`, error);
+      }
     }
+
+    setLoadError("FFmpeg failed to load after trying multiple sources. Try refreshing the page.");
   };
 
   const handleLoadedMetadata = () => {
@@ -220,8 +232,11 @@ const VideoEditor = ({ file, onSave, onCancel }: VideoEditorProps) => {
       )}
 
       {loadError && (
-        <div className="p-4 bg-destructive/10 border-b border-destructive/20">
+        <div className="p-4 bg-destructive/10 border-b border-destructive/20 flex items-center justify-between">
           <p className="text-sm font-medium text-destructive">{loadError}</p>
+          <Button variant="outline" size="sm" onClick={() => { setLoadError(""); loadFFmpeg(); }}>
+            <RotateCcw className="w-3 h-3 mr-1" /> Retry
+          </Button>
         </div>
       )}
 
