@@ -9,30 +9,70 @@ import {
   Youtube,
   ChevronLeft,
   ChevronRight,
+  Video,
+  Instagram,
+  Sun,
+  Moon,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-const navItems = [
-  { to: "/", icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/upload", icon: Upload, label: "Upload" },
-  { to: "/analytics", icon: BarChart3, label: "Analytics" },
-  { to: "/social", icon: Facebook, label: "Facebook & IG" },
-  { to: "/settings", icon: Settings, label: "Settings" },
+const navGroups = [
+  {
+    label: "Main",
+    items: [
+      { to: "/", icon: LayoutDashboard, label: "Dashboard" },
+      { to: "/analytics", icon: BarChart3, label: "Analytics" },
+    ],
+  },
+  {
+    label: "YouTube",
+    items: [
+      { to: "/upload", icon: Upload, label: "Upload Video" },
+      { to: "/my-videos", icon: Video, label: "My Videos" },
+    ],
+  },
+  {
+    label: "Social",
+    items: [
+      { to: "/social", icon: Facebook, label: "Facebook & IG" },
+      { to: "/ig-auto-reply", icon: Instagram, label: "IG Auto-Reply" },
+    ],
+  },
+  {
+    label: "Account",
+    items: [
+      { to: "/settings", icon: Settings, label: "Settings" },
+    ],
+  },
 ];
 
 const AppSidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
+  const [isDark, setIsDark] = useState(true);
   const location = useLocation();
+
+  useEffect(() => {
+    const isDarkMode = document.documentElement.classList.contains("dark") ||
+      !document.documentElement.classList.contains("light");
+    setIsDark(isDarkMode);
+  }, []);
+
+  const toggleTheme = () => {
+    const next = !isDark;
+    setIsDark(next);
+    document.documentElement.classList.toggle("dark", next);
+    document.documentElement.classList.toggle("light", !next);
+  };
 
   return (
     <motion.aside
       animate={{ width: collapsed ? 72 : 240 }}
       transition={{ duration: 0.2, ease: "easeInOut" }}
-      className="fixed left-0 top-0 h-screen bg-sidebar border-r border-sidebar-border z-40 flex flex-col"
+      className="fixed left-0 top-0 h-screen bg-sidebar border-r border-sidebar-border z-40 flex flex-col overflow-hidden"
     >
       {/* Logo */}
-      <div className="h-16 flex items-center px-4 border-b border-sidebar-border">
+      <div className="h-16 flex items-center px-4 border-b border-sidebar-border flex-shrink-0">
         <div className="flex items-center gap-3 overflow-hidden">
           <div className="w-9 h-9 rounded-lg bg-gradient-brand flex items-center justify-center flex-shrink-0">
             <Youtube className="w-5 h-5 text-primary-foreground" />
@@ -52,55 +92,83 @@ const AppSidebar = () => {
         </div>
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 py-4 px-2 space-y-1">
-        {navItems.map(({ to, icon: Icon, label }) => {
-          const isActive = location.pathname === to;
-          return (
-            <NavLink
-              key={to}
-              to={to}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
-                isActive
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
+      {/* Nav groups */}
+      <nav className="flex-1 py-3 px-2 space-y-4 overflow-y-auto">
+        {navGroups.map(group => (
+          <div key={group.label}>
+            <AnimatePresence>
+              {!collapsed && (
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="text-xs font-semibold text-sidebar-foreground/40 uppercase tracking-widest px-3 mb-1"
+                >
+                  {group.label}
+                </motion.p>
               )}
-            >
-              <Icon
-                className={cn(
-                  "w-5 h-5 flex-shrink-0 transition-colors",
-                  isActive && "text-primary"
-                )}
-              />
-              <AnimatePresence>
-                {!collapsed && (
-                  <motion.span
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="whitespace-nowrap"
+            </AnimatePresence>
+            <div className="space-y-0.5">
+              {group.items.map(({ to, icon: Icon, label }) => {
+                const isActive = location.pathname === to;
+                return (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                      isActive
+                        ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                        : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
+                    )}
                   >
-                    {label}
-                  </motion.span>
-                )}
-              </AnimatePresence>
-            </NavLink>
-          );
-        })}
+                    <Icon
+                      className={cn(
+                        "w-5 h-5 flex-shrink-0 transition-colors",
+                        isActive ? "text-primary" : ""
+                      )}
+                    />
+                    <AnimatePresence>
+                      {!collapsed && (
+                        <motion.span
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className="whitespace-nowrap"
+                        >
+                          {label}
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+                  </NavLink>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
-      {/* Collapse toggle */}
-      <div className="p-2 border-t border-sidebar-border">
+      {/* Bottom: theme + collapse */}
+      <div className="p-2 border-t border-sidebar-border flex-shrink-0 space-y-1">
+        <button
+          onClick={toggleTheme}
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
+          title="Toggle theme"
+        >
+          {isDark ? <Sun className="w-4 h-4 flex-shrink-0" /> : <Moon className="w-4 h-4 flex-shrink-0" />}
+          <AnimatePresence>
+            {!collapsed && (
+              <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-sm whitespace-nowrap">
+                {isDark ? "Light Mode" : "Dark Mode"}
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </button>
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="w-full flex items-center justify-center py-2 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
         >
-          {collapsed ? (
-            <ChevronRight className="w-4 h-4" />
-          ) : (
-            <ChevronLeft className="w-4 h-4" />
-          )}
+          {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
         </button>
       </div>
     </motion.aside>
