@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import {
   Video, Eye, ThumbsUp, MessageCircle, Pencil, Trash2, ExternalLink,
-  RefreshCw, Globe, Lock, Users, Search, CheckSquare, Square, Loader2, X, Save
+  RefreshCw, Globe, Lock, Users, Search, CheckSquare, Loader2, Save
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { getYouTubeChannels } from "@/lib/youtube-api";
 import { supabase } from "@/integrations/supabase/client";
+import { BatchActionsBar } from "@/components/BatchActionsBar";
 
 interface VideoData {
   id: string;
@@ -390,7 +391,7 @@ const MyVideosPage = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Batch delete */}
+      {/* Batch delete dialog */}
       <AlertDialog open={isBatchDeleteOpen} onOpenChange={setIsBatchDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -405,6 +406,13 @@ const MyVideosPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Floating batch actions bar */}
+      <BatchActionsBar
+        selectedCount={selectedVideos.size}
+        onClearSelection={() => { setSelectedVideos(new Set()); setIsMultiSelectMode(false); }}
+        onBatchDelete={handleBatchDelete}
+      />
     </div>
   );
 };
