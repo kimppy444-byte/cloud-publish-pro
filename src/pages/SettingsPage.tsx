@@ -410,6 +410,25 @@ const SettingsPage = () => {
                       <p className="text-xs text-muted-foreground mt-1">URL users unlock after completing actions</p>
                     </div>
                     <div>
+                      <label className="text-sm font-medium text-foreground mb-1.5 block">Description Header Text</label>
+                      <Input
+                        value={defaults.socialUnlockHeader ?? "🎁 UNLOCK EXCLUSIVE CONTENT"}
+                        onChange={e => setDefaults(d => ({ ...d, socialUnlockHeader: e.target.value }))}
+                        placeholder="🎁 UNLOCK EXCLUSIVE CONTENT"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">Appears above the link in the video description</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-foreground mb-1.5 block">Comment Message Text</label>
+                      <Textarea
+                        value={defaults.socialUnlockBody ?? "🎁 Unlock exclusive content!\n\nComplete the required actions to access:"}
+                        onChange={e => setDefaults(d => ({ ...d, socialUnlockBody: e.target.value }))}
+                        placeholder="🎁 Unlock exclusive content!&#10;&#10;Complete the required actions to access:"
+                        rows={3}
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">Posted as a comment under the video (link appended)</p>
+                    </div>
+                    <div>
                       <label className="text-sm font-medium text-foreground mb-2 block">Required Actions</label>
                       <div className="space-y-2">
                         {[

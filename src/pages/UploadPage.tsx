@@ -277,11 +277,13 @@ const UploadPage = () => {
                   });
                   if (slRes.success && slRes.smartLink) {
                     console.log("Smart link generated:", slRes.smartLink);
-                    
+                    const headerText = defaults.socialUnlockHeader ?? "🎁 UNLOCK EXCLUSIVE CONTENT";
+                    const bodyText = defaults.socialUnlockBody ?? "🎁 Unlock exclusive content!\n\nComplete the required actions to access:";
+
                     // 1. Update video description with smart link
                     try {
                       setUploadProgress(`Adding smart link to description on ${dest.name}...`);
-                      const smartLinkText = `\n\n━━━━━━━━━━━━━━━━━━━━\n🎁 UNLOCK EXCLUSIVE CONTENT\n${slRes.smartLink}\n━━━━━━━━━━━━━━━━━━━━`;
+                      const smartLinkText = `\n\n━━━━━━━━━━━━━━━━━━━━\n${headerText}\n${slRes.smartLink}\n━━━━━━━━━━━━━━━━━━━━`;
                       const finalTitle2 = (isShort && videoDuration && videoDuration <= 60) ? `${title} #Shorts` : title;
                       const finalDesc2 = (isShort && videoDuration && videoDuration <= 60) ? `${description}\n\n#Shorts` : description;
                       const updatedDescription = (finalDesc2 + smartLinkText).substring(0, 5000);
@@ -317,7 +319,7 @@ const UploadPage = () => {
                     // 2. Auto-post smart link as a comment
                     try {
                       setUploadProgress(`Posting smart link comment on ${dest.name}...`);
-                      const commentText = `🎁 Unlock exclusive content!\n\nComplete the required actions to access:\n${slRes.smartLink}`;
+                      const commentText = `${bodyText}\n${slRes.smartLink}`;
                       const commentRes = await fetch(
                         "https://www.googleapis.com/youtube/v3/commentThreads?part=snippet",
                         {

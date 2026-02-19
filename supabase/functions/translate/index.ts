@@ -6,11 +6,8 @@ const corsHeaders = {
 };
 
 /**
- * Translation edge function using MyMemory API (free, no API key required)
- * Integrates route-5.ts translation logic as a Supabase edge function.
- * 
+ * Translation edge function using Lovable AI (Gemini).
  * POST body: { text: string, targetLanguage: string, sourceLanguage?: string }
- * Supports: en, es, fr, de, it, pt, zh, ja, ko, ar, ru, hi, and many more
  */
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -23,7 +20,7 @@ serve(async (req) => {
   try {
     if (req.method !== 'POST') return err('Method not allowed', 405);
 
-    const { text, targetLanguage, sourceLanguage = 'en' } = await req.json();
+    const { text, targetLanguage, sourceLanguage = 'English' } = await req.json();
 
     if (!text || !targetLanguage) {
       return err('Missing required fields: text and targetLanguage');
@@ -33,31 +30,48 @@ serve(async (req) => {
       return err('Text too long. Maximum 5000 characters per request.');
     }
 
-    const myMemoryUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${sourceLanguage}|${targetLanguage}`;
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) return err('AI service not configured', 500);
 
-    const response = await fetch(myMemoryUrl);
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-3-flash-preview',
+        messages: [
+          {
+            role: 'system',
+            content: `You are a professional translator. Translate the provided text accurately from ${sourceLanguage} to ${targetLanguage}. Return ONLY the translated text, no explanations, no quotes, no extra formatting.`,
+          },
+          {
+            role: 'user',
+            content: text,
+          },
+        ],
+      }),
+    });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('MyMemory API error:', errorText);
-      return err('Translation service unavailable', 502);
+      if (response.status === 429) return err('Rate limit exceeded, please try again later.', 429);
+      if (response.status === 402) return err('AI service credits exhausted.', 402);
+      const t = await response.text();
+      console.error('AI gateway error:', response.status, t);
+      return err('Translation service error', 502);
     }
 
     const data = await response.json();
+    const translatedText = data.choices?.[0]?.message?.content?.trim();
 
-    if (data.responseStatus !== 200) {
-      return err(data.responseDetails || 'Translation failed', 400);
-    }
-
-    const translatedText = data.responseData.translatedText;
-    const quality = data.responseData.match; // 0-1 confidence score
+    if (!translatedText) return err('Translation returned empty result', 500);
 
     return ok({
       success: true,
       translatedText,
       sourceLanguage,
       targetLanguage,
-      quality,
     });
   } catch (error: unknown) {
     console.error('Translation error:', error);
