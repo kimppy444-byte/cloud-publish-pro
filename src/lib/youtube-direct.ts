@@ -30,6 +30,12 @@ export interface YouTubeChannel {
 
 const UPLOAD_DEFAULTS_KEY = "yt_upload_defaults";
 
+export interface SocialUnlockActions {
+  subscribe: boolean;
+  like: boolean;
+  comment: boolean;
+}
+
 export interface UploadDefaults {
   privacy: "public" | "private" | "unlisted";
   category: string;
@@ -37,6 +43,9 @@ export interface UploadDefaults {
   allowRatings: boolean;
   description: string;
   tags: string;
+  socialUnlockEnabled?: boolean;
+  socialUnlockTargetUrl?: string;
+  socialUnlockActions?: SocialUnlockActions;
 }
 
 export function getUploadDefaults(channelId?: string): UploadDefaults | null {

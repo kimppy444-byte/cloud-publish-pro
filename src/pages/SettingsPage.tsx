@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Facebook, Instagram, Key, User, Upload, Settings as SettingsIcon, Loader2, CheckCircle2, XCircle, ExternalLink, Unplug, Plus, Trash2, Globe, Lock, Eye } from "lucide-react";
+import { Facebook, Instagram, Key, User, Upload, Settings as SettingsIcon, Loader2, CheckCircle2, XCircle, ExternalLink, Unplug, Plus, Trash2, Globe, Lock, Eye, Link2 } from "lucide-react";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { getFacebookPages, getInstagramAccount } from "@/lib/facebook-api";
@@ -57,6 +57,9 @@ const SettingsPage = () => {
     allowRatings: true,
     description: "",
     tags: "",
+    socialUnlockEnabled: false,
+    socialUnlockTargetUrl: "",
+    socialUnlockActions: { subscribe: true, like: true, comment: false },
   });
   const [defaultsSaved, setDefaultsSaved] = useState(false);
 
@@ -370,6 +373,73 @@ const SettingsPage = () => {
                     <span className="text-sm">{item.label}</span>
                   </label>
                 ))}
+              </div>
+
+              {/* Social Unlock / Smart Links */}
+              <div className="space-y-4 p-4 bg-primary/5 rounded-lg border-2 border-primary/20">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary/10 rounded-lg">
+                      <Link2 className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-display font-semibold text-foreground">Smart Links (Social Unlock)</h3>
+                      <p className="text-xs text-muted-foreground">Auto-add unlock links to video descriptions</p>
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox"
+                      checked={defaults.socialUnlockEnabled || false}
+                      onChange={e => setDefaults(d => ({ ...d, socialUnlockEnabled: e.target.checked }))}
+                      className="rounded w-5 h-5" />
+                    <span className="text-sm font-semibold">Enable</span>
+                  </label>
+                </div>
+
+                {defaults.socialUnlockEnabled && (
+                  <div className="space-y-4 pt-3 border-t border-primary/20">
+                    <div>
+                      <label className="text-sm font-medium text-foreground mb-1.5 flex items-center gap-2">
+                        <ExternalLink className="w-3.5 h-3.5" /> Target URL
+                      </label>
+                      <Input
+                        value={defaults.socialUnlockTargetUrl || ""}
+                        onChange={e => setDefaults(d => ({ ...d, socialUnlockTargetUrl: e.target.value }))}
+                        placeholder="https://example.com/download"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">URL users unlock after completing actions</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-foreground mb-2 block">Required Actions</label>
+                      <div className="space-y-2">
+                        {[
+                          { key: "subscribe" as const, label: "Require Subscribe" },
+                          { key: "like" as const, label: "Require Like" },
+                          { key: "comment" as const, label: "Require Comment" },
+                        ].map(action => (
+                          <label key={action.key} className="flex items-center gap-3 cursor-pointer p-2 rounded hover:bg-muted/50 transition-colors">
+                            <input type="checkbox"
+                              checked={defaults.socialUnlockActions?.[action.key] || false}
+                              onChange={e => setDefaults(d => ({
+                                ...d,
+                                socialUnlockActions: {
+                                  ...(d.socialUnlockActions || { subscribe: true, like: true, comment: false }),
+                                  [action.key]: e.target.checked,
+                                },
+                              }))}
+                              className="rounded w-4 h-4" />
+                            <span className="text-sm">{action.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="p-3 bg-muted rounded-lg">
+                      <p className="text-xs text-muted-foreground">
+                        <strong>How it works:</strong> A smart link is auto-added to video descriptions. Viewers must complete required actions to unlock your target URL.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <Button

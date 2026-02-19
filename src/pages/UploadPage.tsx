@@ -1,11 +1,15 @@
 import { motion } from "framer-motion";
-import { Upload as UploadIcon, Facebook, Instagram, X, Loader2, CheckCircle2, XCircle, AlertCircle, Scissors } from "lucide-react";
+import {
+  Upload as UploadIcon, Facebook, Instagram, X, Loader2, CheckCircle2, XCircle, AlertCircle,
+  Scissors, Film, Sparkles, ImageIcon, Trash2, Globe, Lock, Eye, ExternalLink, Tag
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useState, useRef, useEffect } from "react";
+import { Switch } from "@/components/ui/switch";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { getFacebookPages, getInstagramAccount } from "@/lib/facebook-api";
 import { getYouTubeChannels } from "@/lib/youtube-api";
@@ -13,7 +17,9 @@ import { publishToFacebook, publishToInstagram, uploadToYouTube } from "@/lib/pu
 import { supabase } from "@/integrations/supabase/client";
 import VideoPreview from "@/components/VideoPreview";
 import VideoEditor from "@/components/VideoEditor";
+import VideoCommentManager from "@/components/VideoCommentManager";
 import TagSelector from "@/components/TagSelector";
+import { getStoredChannels, uploadVideoToYouTube, uploadThumbnail } from "@/lib/youtube-direct";
 
 interface UploadDestination {
   id: string;
@@ -24,6 +30,7 @@ interface UploadDestination {
   pageAccessToken?: string;
   igAccountId?: string;
   channelTokenId?: string;
+  accessToken?: string;
 }
 
 interface PublishResult {
@@ -31,7 +38,19 @@ interface PublishResult {
   platform: string;
   success: boolean;
   error?: string;
+  videoId?: string;
 }
+
+const CATEGORIES = [
+  { id: "1", name: "Film & Animation" }, { id: "2", name: "Autos & Vehicles" },
+  { id: "10", name: "Music" }, { id: "15", name: "Pets & Animals" },
+  { id: "17", name: "Sports" }, { id: "18", name: "Short Movies" },
+  { id: "19", name: "Travel & Events" }, { id: "20", name: "Gaming" },
+  { id: "22", name: "People & Blogs" }, { id: "23", name: "Comedy" },
+  { id: "24", name: "Entertainment" }, { id: "25", name: "News & Politics" },
+  { id: "26", name: "Howto & Style" }, { id: "27", name: "Education" },
+  { id: "28", name: "Science & Technology" },
+];
 
 const YtIcon = () => (
   <svg viewBox="0 0 24 24" className="w-4 h-4 text-youtube" fill="currentColor">
@@ -51,9 +70,32 @@ const UploadPage = () => {
   const [description, setDescription] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [privacy, setPrivacy] = useState('public');
+  const [category, setCategory] = useState('22');
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState('');
   const [results, setResults] = useState<PublishResult[]>([]);
+
+  // New features
+  const [thumbnail, setThumbnail] = useState<File | null>(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+  const [videoDuration, setVideoDuration] = useState<number | null>(null);
+  const [isShort, setIsShort] = useState(false);
+  const [dualUpload, setDualUpload] = useState(false);
+  const [customShortsDuration, setCustomShortsDuration] = useState(60);
+  const [allowComments, setAllowComments] = useState(true);
+  const [allowRatings, setAllowRatings] = useState(true);
+
+  const videoPreviewUrl = useMemo(() => {
+    if (!selectedFile) return null;
+    return URL.createObjectURL(selectedFile);
+  }, [selectedFile]);
+
+  useEffect(() => {
+    return () => {
+      if (videoPreviewUrl) URL.revokeObjectURL(videoPreviewUrl);
+      if (thumbnailPreview) URL.revokeObjectURL(thumbnailPreview);
+    };
+  }, [videoPreviewUrl, thumbnailPreview]);
 
   useEffect(() => {
     const loadDestinations = async () => {
@@ -65,38 +107,39 @@ const UploadPage = () => {
         const pages = res.data?.data || [];
         for (const page of pages) {
           dests.push({
-            id: `fb-${page.id}`,
-            name: page.name,
-            platform: "facebook",
-            picture: page.picture?.data?.url,
-            pageId: page.id,
-            pageAccessToken: page.access_token,
+            id: `fb-${page.id}`, name: page.name, platform: "facebook",
+            picture: page.picture?.data?.url, pageId: page.id, pageAccessToken: page.access_token,
           });
 
           const igRes = await getInstagramAccount(page.id, page.access_token);
           if (igRes.success && igRes.data?.instagram_business_account) {
             const ig = igRes.data.instagram_business_account;
             dests.push({
-              id: `ig-${ig.id}`,
-              name: ig.name || ig.username || page.name,
-              platform: "instagram",
-              picture: ig.profile_picture_url,
-              pageId: page.id,
-              pageAccessToken: page.access_token,
-              igAccountId: ig.id,
+              id: `ig-${ig.id}`, name: ig.name || ig.username || page.name, platform: "instagram",
+              picture: ig.profile_picture_url, pageId: page.id, pageAccessToken: page.access_token, igAccountId: ig.id,
             });
           }
         }
       }
 
+      // Load YouTube channels from both APIs
       const ytRes = await getYouTubeChannels();
       if (ytRes.success && ytRes.data?.channels) {
         for (const ch of ytRes.data.channels) {
           dests.push({
-            id: `yt-${ch.id}`,
-            name: ch.channelTitle || 'YouTube Channel',
-            platform: "youtube",
-            channelTokenId: ch.id,
+            id: `yt-${ch.id}`, name: ch.channelTitle || 'YouTube Channel',
+            platform: "youtube", channelTokenId: ch.id,
+          });
+        }
+      }
+
+      // Also load direct token channels
+      const storedChannels = await getStoredChannels();
+      for (const ch of storedChannels) {
+        if (!dests.find(d => d.channelTokenId === ch.id)) {
+          dests.push({
+            id: `ytd-${ch.id}`, name: ch.channelTitle || 'YouTube Channel',
+            platform: "youtube", channelTokenId: ch.id, accessToken: ch.accessToken,
           });
         }
       }
@@ -104,7 +147,6 @@ const UploadPage = () => {
       setDestinations(dests);
       setLoadingDestinations(false);
     };
-
     loadDestinations();
   }, []);
 
@@ -114,9 +156,25 @@ const UploadPage = () => {
       toast.error("Invalid file type. Please upload MP4, MOV, AVI, or WebM.");
       return;
     }
+    if (file.size > 128 * 1024 * 1024) {
+      toast.error("File size must be less than 128 MB.");
+      return;
+    }
     setSelectedFile(file);
     setShowEditor(false);
+    setResults([]);
     toast.success(`Selected: ${file.name}`);
+  };
+
+  const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Thumbnail must be less than 2 MB.");
+      return;
+    }
+    setThumbnail(file);
+    setThumbnailPreview(URL.createObjectURL(file));
   };
 
   const toggleAccount = (id: string) => {
@@ -148,8 +206,7 @@ const UploadPage = () => {
       const storagePath = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('videos')
-        .upload(storagePath, selectedFile, { contentType: selectedFile.type });
+        .from('videos').upload(storagePath, selectedFile, { contentType: selectedFile.type });
 
       if (uploadError) {
         toast.error(`Storage upload failed: ${uploadError.message}`);
@@ -157,10 +214,7 @@ const UploadPage = () => {
         return;
       }
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('videos')
-        .getPublicUrl(storagePath);
-
+      const { data: { publicUrl } } = supabase.storage.from('videos').getPublicUrl(storagePath);
       toast.success('Video uploaded to storage!');
 
       const selected = destinations.filter(d => selectedAccounts.includes(d.id));
@@ -177,8 +231,68 @@ const UploadPage = () => {
           const res = await publishToInstagram(dest.igAccountId, dest.pageAccessToken, publicUrl, caption);
           publishResults.push({ destinationName: dest.name, platform: 'Instagram', success: res.success, error: res.error });
         } else if (dest.platform === 'youtube') {
-          const res = await uploadToYouTube(storagePath, title, description, selectedTags, privacy);
-          publishResults.push({ destinationName: dest.name, platform: 'YouTube', success: res.success, error: res.error });
+          // Use direct upload if we have an access token
+          if (dest.accessToken) {
+            const finalTitle = (isShort && videoDuration && videoDuration <= 60) ? `${title} #Shorts` : title;
+            const finalDesc = (isShort && videoDuration && videoDuration <= 60) ? `${description}\n\n#Shorts` : description;
+            const res = await uploadVideoToYouTube(dest.accessToken, selectedFile, {
+              title: finalTitle, description: finalDesc,
+              tags: selectedTags, categoryId: category, privacyStatus: privacy,
+              allowComments, allowRatings,
+            });
+            if (res.success && res.videoId && thumbnail) {
+              await uploadThumbnail(dest.accessToken, res.videoId, thumbnail);
+            }
+            publishResults.push({
+              destinationName: dest.name, platform: 'YouTube',
+              success: res.success, error: res.error, videoId: res.videoId,
+            });
+
+            // Dual upload as Shorts
+            if (dualUpload && res.success && videoDuration && videoDuration > 60) {
+              setUploadProgress(`Creating Shorts version for ${dest.name}...`);
+              try {
+                const { FFmpeg } = await import("@ffmpeg/ffmpeg");
+                const { toBlobURL } = await import("@ffmpeg/util");
+                const ffmpeg = new FFmpeg();
+                const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd";
+                await ffmpeg.load({
+                  coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
+                  wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
+                });
+                await ffmpeg.writeFile("input.mp4", new Uint8Array(await selectedFile.arrayBuffer()));
+                await ffmpeg.exec([
+                  "-i", "input.mp4", "-ss", "0", "-to", customShortsDuration.toString(),
+                  "-vf", "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2",
+                  "-c:v", "libx264", "-preset", "veryfast", "-crf", "28", "-c:a", "aac", "-b:a", "128k", "output.mp4"
+                ]);
+                const shortsData = await ffmpeg.readFile("output.mp4");
+                const uint8 = shortsData instanceof Uint8Array ? shortsData : new TextEncoder().encode(shortsData as string);
+                const shortsBlob = new Blob([new Uint8Array(uint8)], { type: "video/mp4" });
+                const shortsFile = new File([shortsBlob], `shorts_${selectedFile.name}`, { type: "video/mp4" });
+
+                setUploadProgress(`Uploading Shorts version to ${dest.name}...`);
+                const shortsRes = await uploadVideoToYouTube(dest.accessToken, shortsFile, {
+                  title: `${title} #Shorts`, description: `${description}\n\n#Shorts`,
+                  tags: [...selectedTags, "Shorts", "Short"],
+                  categoryId: category, privacyStatus: privacy,
+                  allowComments, allowRatings,
+                });
+                publishResults.push({
+                  destinationName: `${dest.name} (Short)`, platform: 'YouTube',
+                  success: shortsRes.success, error: shortsRes.error, videoId: shortsRes.videoId,
+                });
+              } catch (err: any) {
+                publishResults.push({
+                  destinationName: `${dest.name} (Short)`, platform: 'YouTube',
+                  success: false, error: `Shorts creation failed: ${err.message}`,
+                });
+              }
+            }
+          } else {
+            const res = await uploadToYouTube(storagePath, title, description, selectedTags, privacy);
+            publishResults.push({ destinationName: dest.name, platform: 'YouTube', success: res.success, error: res.error });
+          }
         }
       }
 
@@ -199,6 +313,9 @@ const UploadPage = () => {
     }
   };
 
+  const ytResults = results.filter(r => r.platform === 'YouTube' && r.success && r.videoId);
+  const firstYtAccessToken = destinations.find(d => d.accessToken && selectedAccounts.includes(d.id))?.accessToken;
+
   return (
     <div className="space-y-8 max-w-4xl">
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="space-y-1">
@@ -216,15 +333,66 @@ const UploadPage = () => {
           />
         ) : selectedFile ? (
           <div className="space-y-3">
-            <VideoPreview file={selectedFile} />
+            {/* Enhanced video preview with thumbnail overlay */}
+            <div className="rounded-xl overflow-hidden border border-border bg-card">
+              <div className="relative bg-black aspect-video">
+                <video
+                  src={videoPreviewUrl || undefined}
+                  controls
+                  className="w-full h-full object-contain"
+                  onLoadedMetadata={(e) => {
+                    const vid = e.currentTarget;
+                    setVideoDuration(vid.duration);
+                    if (vid.duration <= 60 && vid.videoWidth / vid.videoHeight < 1) {
+                      setIsShort(true);
+                    }
+                  }}
+                />
+
+                {/* Thumbnail overlay */}
+                {thumbnailPreview && (
+                  <div className="absolute top-3 right-3 w-24 h-16 rounded-lg overflow-hidden border-2 border-border shadow-lg">
+                    <img src={thumbnailPreview} alt="Thumbnail" className="w-full h-full object-cover" />
+                    <button
+                      onClick={() => { setThumbnail(null); if (thumbnailPreview) URL.revokeObjectURL(thumbnailPreview); setThumbnailPreview(null); }}
+                      className="absolute -top-1 -right-1 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-xs"
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div className="px-4 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Film className="w-4 h-4" />
+                  <span className="truncate max-w-[200px]">{selectedFile.name}</span>
+                  <span className="text-xs">({(selectedFile.size / (1024 * 1024)).toFixed(1)} MB)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {videoDuration && videoDuration <= 60 && (
+                    <span className="px-2 py-0.5 bg-primary/10 text-primary rounded-full text-xs font-medium flex items-center gap-1">
+                      <Sparkles className="w-3 h-3" /> Shorts Eligible
+                    </span>
+                  )}
+                  {videoDuration && (
+                    <span className="text-xs text-muted-foreground">{Math.round(videoDuration)}s</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
             {!uploading && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Button variant="outline" size="sm" onClick={() => setShowEditor(true)}>
                   <Scissors className="w-4 h-4 mr-2" /> Edit Video
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => setSelectedFile(null)}>
+                <Button variant="outline" size="sm" onClick={() => document.getElementById("thumb-input")?.click()}>
+                  <ImageIcon className="w-4 h-4 mr-2" /> {thumbnail ? "Change Thumbnail" : "Add Thumbnail"}
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => { setSelectedFile(null); setThumbnail(null); setThumbnailPreview(null); setVideoDuration(null); }}>
                   <X className="w-4 h-4 mr-2" /> Remove
                 </Button>
+                <input id="thumb-input" type="file" accept="image/jpeg,image/png" onChange={handleThumbnailChange} className="hidden" />
               </div>
             )}
           </div>
@@ -238,30 +406,75 @@ const UploadPage = () => {
               dragOver ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30"
             }`}
           >
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="video/mp4,video/quicktime,video/x-msvideo,video/webm"
-              className="hidden"
-              onChange={(e) => { const file = e.target.files?.[0]; if (file) handleFileSelect(file); }}
-            />
+            <input ref={fileInputRef} type="file" accept="video/mp4,video/quicktime,video/x-msvideo,video/webm" className="hidden"
+              onChange={(e) => { const file = e.target.files?.[0]; if (file) handleFileSelect(file); }} />
             <div className="flex flex-col items-center gap-3">
               <div className="w-14 h-14 rounded-xl bg-muted flex items-center justify-center">
                 <UploadIcon className="w-6 h-6 text-muted-foreground" />
               </div>
               <div>
                 <p className="font-medium text-foreground">Drop your video here or click to browse</p>
-                <p className="text-sm text-muted-foreground mt-1">MP4, MOV, AVI, WebM</p>
+                <p className="text-sm text-muted-foreground mt-1">MP4, MOV, AVI, WebM · Max 128 MB</p>
               </div>
             </div>
           </div>
         )}
       </motion.div>
 
+      {/* Shorts / Dual Upload Options */}
+      {selectedFile && videoDuration && (
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.07 }}>
+          {videoDuration <= 60 && (
+            <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input type="checkbox" checked={isShort} onChange={(e) => setIsShort(e.target.checked)}
+                  disabled={uploading} className="rounded w-4 h-4 mt-0.5" />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-semibold text-foreground">Upload as YouTube Short</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    This video is {Math.round(videoDuration)}s and can be uploaded as a Short for extra discovery.
+                  </p>
+                </div>
+              </label>
+            </div>
+          )}
+          {videoDuration > 60 && (
+            <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl space-y-3">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input type="checkbox" checked={dualUpload} onChange={(e) => setDualUpload(e.target.checked)}
+                  disabled={uploading} className="rounded w-4 h-4 mt-0.5" />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-semibold text-foreground">Upload to Both Video & Shorts</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Upload the full {Math.round(videoDuration)}s video AND auto-create a vertical Shorts version.
+                  </p>
+                </div>
+              </label>
+              {dualUpload && (
+                <div className="pl-7 p-3 bg-card rounded-lg border border-border">
+                  <label className="text-xs font-semibold mb-2 block text-foreground">Shorts Duration (seconds)</label>
+                  <div className="flex items-center gap-3">
+                    <input type="range" min="15" max="60" step="1" value={customShortsDuration}
+                      onChange={(e) => setCustomShortsDuration(Number(e.target.value))}
+                      disabled={uploading} className="flex-1" />
+                    <span className="text-sm font-bold text-primary bg-primary/10 px-2 py-1 rounded-full">{customShortsDuration}s</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </motion.div>
+      )}
+
       {/* Metadata */}
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-        className="bg-card rounded-xl p-6 shadow-card border border-border/50 space-y-5"
-      >
+        className="bg-card rounded-xl p-6 shadow-card border border-border/50 space-y-5">
         <h2 className="font-display font-semibold text-foreground text-lg">Video Details</h2>
         <div className="space-y-4">
           <div>
@@ -278,15 +491,48 @@ const UploadPage = () => {
               <TagSelector selectedTags={selectedTags} onChange={setSelectedTags} disabled={uploading} />
             </div>
             <div>
-              <label className="text-sm font-medium text-foreground mb-1.5 block">Privacy (YouTube)</label>
-              <Select value={privacy} onValueChange={setPrivacy} disabled={uploading}>
+              <label className="text-sm font-medium text-foreground mb-1.5 block">Category</label>
+              <Select value={category} onValueChange={setCategory} disabled={uploading}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="public">Public</SelectItem>
-                  <SelectItem value="unlisted">Unlisted</SelectItem>
-                  <SelectItem value="private">Private</SelectItem>
+                  {CATEGORIES.map(cat => <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>)}
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-foreground mb-1.5 block">Privacy (YouTube)</label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { value: "public", icon: <Globe className="w-3.5 h-3.5" />, label: "Public" },
+                  { value: "unlisted", icon: <Eye className="w-3.5 h-3.5" />, label: "Unlisted" },
+                  { value: "private", icon: <Lock className="w-3.5 h-3.5" />, label: "Private" },
+                ].map(opt => (
+                  <button key={opt.value} onClick={() => setPrivacy(opt.value)} disabled={uploading}
+                    className={`p-2 rounded-lg border-2 text-center text-xs transition-all ${
+                      privacy === opt.value ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
+                    } disabled:opacity-50`}>
+                    <div className="flex justify-center mb-0.5">{opt.icon}</div>
+                    <p className="font-semibold">{opt.label}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground mb-1.5 block">Viewer Permissions</label>
+              <div className="space-y-2 p-3 bg-muted rounded-lg">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={allowComments} onChange={(e) => setAllowComments(e.target.checked)}
+                    disabled={uploading} className="rounded w-4 h-4" />
+                  <span className="text-xs">Allow comments</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={allowRatings} onChange={(e) => setAllowRatings(e.target.checked)}
+                    disabled={uploading} className="rounded w-4 h-4" />
+                  <span className="text-xs">Show likes/dislikes</span>
+                </label>
+              </div>
             </div>
           </div>
         </div>
@@ -294,8 +540,7 @@ const UploadPage = () => {
 
       {/* Destinations */}
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
-        className="bg-card rounded-xl p-6 shadow-card border border-border/50 space-y-4"
-      >
+        className="bg-card rounded-xl p-6 shadow-card border border-border/50 space-y-4">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="font-display font-semibold text-foreground text-lg">Upload Destinations</h2>
@@ -320,19 +565,11 @@ const UploadPage = () => {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {destinations.map((dest) => (
-              <label
-                key={dest.id}
+              <label key={dest.id}
                 className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                  selectedAccounts.includes(dest.id)
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:border-muted-foreground/30"
-                }`}
-              >
-                <Checkbox
-                  checked={selectedAccounts.includes(dest.id)}
-                  onCheckedChange={() => toggleAccount(dest.id)}
-                  disabled={uploading}
-                />
+                  selectedAccounts.includes(dest.id) ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30"
+                }`}>
+                <Checkbox checked={selectedAccounts.includes(dest.id)} onCheckedChange={() => toggleAccount(dest.id)} disabled={uploading} />
                 {dest.picture ? (
                   <img src={dest.picture} alt="" className="w-5 h-5 rounded-full" />
                 ) : dest.platform === "instagram" ? (
@@ -360,14 +597,11 @@ const UploadPage = () => {
             <p className="text-sm font-medium text-foreground">{uploadProgress}</p>
           </div>
         ) : (
-          <Button
-            size="lg"
-            className="bg-gradient-brand text-primary-foreground hover:opacity-90"
-            onClick={handleUpload}
-            disabled={!selectedFile || selectedAccounts.length === 0 || !title.trim()}
-          >
+          <Button size="lg" className="bg-gradient-brand text-primary-foreground hover:opacity-90"
+            onClick={handleUpload} disabled={!selectedFile || selectedAccounts.length === 0 || !title.trim()}>
             <UploadIcon className="w-4 h-4 mr-2" />
             Upload to {selectedAccounts.length} Destination{selectedAccounts.length !== 1 ? "s" : ""}
+            {dualUpload ? " + Shorts" : ""}
           </Button>
         )}
 
@@ -381,12 +615,33 @@ const UploadPage = () => {
                 ) : (
                   <XCircle className="w-5 h-5 text-destructive flex-shrink-0" />
                 )}
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-foreground">{r.destinationName} ({r.platform})</p>
                   {r.error && <p className="text-xs text-destructive mt-0.5 truncate">{r.error}</p>}
                   {r.success && <p className="text-xs text-success mt-0.5">Published successfully!</p>}
                 </div>
+                {r.videoId && (
+                  <a href={`https://www.youtube.com/watch?v=${r.videoId}`} target="_blank" rel="noopener noreferrer"
+                    className="text-primary hover:text-primary/80">
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                )}
               </div>
+            ))}
+          </div>
+        )}
+
+        {/* Post-upload comment manager */}
+        {ytResults.length > 0 && firstYtAccessToken && (
+          <div className="space-y-3">
+            <h3 className="font-display font-semibold text-foreground">Post a Comment on Your Videos</h3>
+            {ytResults.map((r) => (
+              <VideoCommentManager
+                key={r.videoId}
+                videoId={r.videoId!}
+                accessToken={firstYtAccessToken}
+                videoTitle={`${r.destinationName}: ${title}`}
+              />
             ))}
           </div>
         )}

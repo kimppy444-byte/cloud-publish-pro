@@ -1,8 +1,11 @@
-import { useState, useRef, useCallback, useEffect } from "react";
-import { Scissors, RotateCw, Download, Loader2, Play, Pause, Volume2, VolumeX } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Scissors, RotateCcw, Download, Loader2, Play, Pause, Volume2, VolumeX, Crop } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
+import { FFmpeg } from "@ffmpeg/ffmpeg";
+import { toBlobURL } from "@ffmpeg/util";
 
 interface VideoEditorProps {
   file: File;
@@ -10,8 +13,11 @@ interface VideoEditorProps {
   onCancel: () => void;
 }
 
+type AspectRatio = "original" | "9:16" | "16:9" | "1:1";
+
 const VideoEditor = ({ file, onSave, onCancel }: VideoEditorProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const ffmpegRef = useRef<FFmpeg | null>(null);
   const [videoUrl, setVideoUrl] = useState("");
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
@@ -21,6 +27,11 @@ const VideoEditor = ({ file, onSave, onCancel }: VideoEditorProps) => {
   const [muted, setMuted] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [processMessage, setProcessMessage] = useState("");
+  const [ffmpegLoaded, setFfmpegLoaded] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const [aspectRatio, setAspectRatio] = useState<AspectRatio>("original");
+  const [videoWidth, setVideoWidth] = useState(0);
+  const [videoHeight, setVideoHeight] = useState(0);
 
   useEffect(() => {
     const url = URL.createObjectURL(file);
@@ -28,11 +39,40 @@ const VideoEditor = ({ file, onSave, onCancel }: VideoEditorProps) => {
     return () => URL.revokeObjectURL(url);
   }, [file]);
 
+  // Preload FFmpeg on mount
+  useEffect(() => {
+    loadFFmpeg();
+  }, []);
+
+  const loadFFmpeg = async () => {
+    try {
+      const ffmpeg = new FFmpeg();
+      ffmpegRef.current = ffmpeg;
+
+      ffmpeg.on("log", ({ message }) => {
+        console.log("FFmpeg:", message);
+      });
+
+      const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd";
+      await ffmpeg.load({
+        coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
+        wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
+      });
+
+      setFfmpegLoaded(true);
+    } catch (error) {
+      console.error("Error loading FFmpeg:", error);
+      setLoadError("FFmpeg failed to load. Video editing may not work in this browser.");
+    }
+  };
+
   const handleLoadedMetadata = () => {
     if (videoRef.current) {
       const dur = videoRef.current.duration;
       setDuration(dur);
       setTrimEnd(dur);
+      setVideoWidth(videoRef.current.videoWidth);
+      setVideoHeight(videoRef.current.videoHeight);
     }
   };
 
@@ -73,48 +113,64 @@ const VideoEditor = ({ file, onSave, onCancel }: VideoEditorProps) => {
     }
   };
 
-  const handleTrim = async () => {
+  const handleReset = () => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0;
+      videoRef.current.pause();
+      setPlaying(false);
+      setTrimStart(0);
+      setTrimEnd(duration);
+      setCurrentTime(0);
+      setAspectRatio("original");
+    }
+  };
+
+  const handleProcess = async () => {
+    if (!ffmpegRef.current || !ffmpegLoaded) {
+      toast.error("FFmpeg is not loaded yet. Please wait a moment.");
+      return;
+    }
+
     setProcessing(true);
-    setProcessMessage("Loading video editor...");
+    setProcessMessage("Processing video...");
 
     try {
-      const { FFmpeg } = await import("@ffmpeg/ffmpeg");
-      const { fetchFile, toBlobURL } = await import("@ffmpeg/util");
+      const ffmpeg = ffmpegRef.current;
 
-      const ffmpeg = new FFmpeg();
+      await ffmpeg.writeFile("input.mp4", new Uint8Array(await file.arrayBuffer()));
 
-      setProcessMessage("Loading FFmpeg core...");
-      const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd";
-      await ffmpeg.load({
-        coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
-        wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
-      });
+      const filterCommands: string[] = [];
 
-      setProcessMessage("Processing video...");
-      const inputName = "input." + (file.name.split(".").pop() || "mp4");
-      const outputName = "output.mp4";
+      if (aspectRatio !== "original") {
+        let targetWidth: number, targetHeight: number;
+        if (aspectRatio === "9:16") { targetWidth = 1080; targetHeight = 1920; }
+        else if (aspectRatio === "16:9") { targetWidth = 1920; targetHeight = 1080; }
+        else { targetWidth = 1080; targetHeight = 1080; }
 
-      await ffmpeg.writeFile(inputName, await fetchFile(file));
+        filterCommands.push(
+          `scale=${targetWidth}:${targetHeight}:force_original_aspect_ratio=decrease,pad=${targetWidth}:${targetHeight}:(ow-iw)/2:(oh-ih)/2`
+        );
+      }
 
-      const startStr = trimStart.toFixed(2);
-      const durationStr = (trimEnd - trimStart).toFixed(2);
+      const args = ["-i", "input.mp4", "-ss", trimStart.toFixed(2), "-t", (trimEnd - trimStart).toFixed(2)];
 
-      await ffmpeg.exec([
-        "-i", inputName,
-        "-ss", startStr,
-        "-t", durationStr,
-        "-c", "copy",
-        "-avoid_negative_ts", "make_zero",
-        outputName,
-      ]);
+      if (filterCommands.length > 0) {
+        args.push("-vf", filterCommands.join(","));
+        args.push("-c:v", "libx264", "-preset", "veryfast", "-crf", "28", "-c:a", "aac", "-b:a", "128k");
+      } else {
+        args.push("-c", "copy", "-avoid_negative_ts", "make_zero");
+      }
 
-      const data = await ffmpeg.readFile(outputName);
+      args.push("output.mp4");
+      await ffmpeg.exec(args);
+
+      const data = await ffmpeg.readFile("output.mp4");
       const uint8 = data instanceof Uint8Array ? data : new TextEncoder().encode(data as string);
       const blob = new Blob([new Uint8Array(uint8)], { type: "video/mp4" });
-      const trimmedFile = new File([blob], `trimmed_${file.name}`, { type: "video/mp4" });
+      const editedFile = new File([blob], `edited_${file.name}`, { type: "video/mp4" });
 
-      toast.success(`Video trimmed! ${formatTime(trimStart)} → ${formatTime(trimEnd)}`);
-      onSave(trimmedFile);
+      toast.success(`Video processed! ${formatTime(trimStart)} → ${formatTime(trimEnd)}${aspectRatio !== "original" ? ` (${aspectRatio})` : ""}`);
+      onSave(editedFile);
     } catch (err: any) {
       console.error("FFmpeg error:", err);
       toast.error(`Video processing failed: ${err.message || "Unknown error"}`);
@@ -125,18 +181,49 @@ const VideoEditor = ({ file, onSave, onCancel }: VideoEditorProps) => {
   };
 
   const trimmedDuration = trimEnd - trimStart;
+  const isShortQualified =
+    trimmedDuration <= 60 && (aspectRatio === "9:16" || (aspectRatio === "original" && videoWidth < videoHeight));
+
+  const aspectOptions: { value: AspectRatio; label: string; sub: string }[] = [
+    { value: "original", label: "Original", sub: videoWidth ? `${videoWidth}×${videoHeight}` : "Auto" },
+    { value: "9:16", label: "9:16", sub: "Vertical / Shorts" },
+    { value: "16:9", label: "16:9", sub: "Widescreen" },
+    { value: "1:1", label: "1:1", sub: "Square" },
+  ];
 
   return (
-    <div className="bg-card rounded-xl border border-border/50 overflow-hidden">
+    <Card className="overflow-hidden">
       <div className="p-4 border-b border-border flex items-center justify-between">
         <h3 className="font-display font-semibold text-foreground flex items-center gap-2">
           <Scissors className="w-4 h-4 text-primary" />
           Video Editor
         </h3>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span>Trimmed: {formatTime(trimmedDuration)}</span>
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <span>Duration: {formatTime(trimmedDuration)}</span>
+          {isShortQualified && (
+            <span className="px-2 py-0.5 bg-primary/10 text-primary rounded-full font-medium">
+              ✨ Shorts Eligible
+            </span>
+          )}
         </div>
       </div>
+
+      {/* FFmpeg loading state */}
+      {!ffmpegLoaded && !loadError && (
+        <div className="p-4 bg-muted/50 text-center">
+          <p className="text-sm font-medium text-foreground mb-2">Loading Video Editor...</p>
+          <div className="w-full bg-secondary rounded-full h-2 max-w-xs mx-auto">
+            <div className="bg-primary h-2 rounded-full animate-pulse w-3/4" />
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">Initializing FFmpeg in your browser</p>
+        </div>
+      )}
+
+      {loadError && (
+        <div className="p-4 bg-destructive/10 border-b border-destructive/20">
+          <p className="text-sm font-medium text-destructive">{loadError}</p>
+        </div>
+      )}
 
       {/* Video player */}
       <div className="relative bg-black aspect-video">
@@ -175,7 +262,7 @@ const VideoEditor = ({ file, onSave, onCancel }: VideoEditorProps) => {
         {/* Trim slider */}
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Trim Range</span>
+            <span className="flex items-center gap-1"><Scissors className="w-3 h-3" /> Trim Range</span>
             <span>{formatTime(trimStart)} → {formatTime(trimEnd)}</span>
           </div>
           <Slider
@@ -189,34 +276,57 @@ const VideoEditor = ({ file, onSave, onCancel }: VideoEditorProps) => {
           />
         </div>
 
+        {/* Aspect ratio selector */}
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground flex items-center gap-1">
+            <Crop className="w-3 h-3" /> Aspect Ratio
+          </p>
+          <div className="grid grid-cols-4 gap-2">
+            {aspectOptions.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setAspectRatio(opt.value)}
+                disabled={processing}
+                className={`p-2.5 rounded-lg border-2 transition-all text-center ${
+                  aspectRatio === opt.value
+                    ? "border-primary bg-primary/10"
+                    : "border-border hover:border-primary/50"
+                } disabled:opacity-50`}
+              >
+                <p className="text-xs font-semibold text-foreground">{opt.label}</p>
+                <p className="text-[10px] text-muted-foreground">{opt.sub}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Action buttons */}
         <div className="flex items-center gap-2">
           <Button
-            onClick={handleTrim}
-            disabled={processing || trimmedDuration < 0.5}
+            onClick={handleProcess}
+            disabled={processing || trimmedDuration < 0.5 || !ffmpegLoaded}
             className="bg-gradient-brand text-primary-foreground hover:opacity-90"
           >
             {processing ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
             ) : (
-              <Scissors className="w-4 h-4 mr-2" />
+              <Download className="w-4 h-4 mr-2" />
             )}
-            Trim & Save
+            {processing ? "Processing..." : !ffmpegLoaded ? "Loading..." : "Apply & Save"}
           </Button>
           <Button variant="outline" onClick={onCancel} disabled={processing}>
             Cancel
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => { setTrimStart(0); setTrimEnd(duration); }}
-            disabled={processing}
-          >
-            <RotateCw className="w-3 h-3 mr-1" /> Reset
+          <Button variant="ghost" size="sm" onClick={handleReset} disabled={processing}>
+            <RotateCcw className="w-3 h-3 mr-1" /> Reset
           </Button>
         </div>
+
+        <p className="text-xs text-muted-foreground text-center">
+          Video processing uses FFmpeg in your browser. First use may take a moment to load.
+        </p>
       </div>
-    </div>
+    </Card>
   );
 };
 
