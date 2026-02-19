@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      short_urls: {
+        Row: {
+          click_count: number | null
+          code: string
+          created_at: string | null
+          id: string
+          original_url: string
+        }
+        Insert: {
+          click_count?: number | null
+          code: string
+          created_at?: string | null
+          id?: string
+          original_url: string
+        }
+        Update: {
+          click_count?: number | null
+          code?: string
+          created_at?: string | null
+          id?: string
+          original_url?: string
+        }
+        Relationships: []
+      }
       youtube_tokens: {
         Row: {
           access_token: string

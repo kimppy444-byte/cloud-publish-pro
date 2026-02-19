@@ -46,6 +46,7 @@ serve(async (req) => {
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const FACEBOOK_API_KEY = Deno.env.get('FACEBOOK_API_KEY');
+    const YOUTUBE_API_KEY = Deno.env.get('YOUTUBE_API_KEY');
     const GRAPH_API = 'https://graph.facebook.com/v19.0';
 
     if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
@@ -55,7 +56,7 @@ serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const body = await req.json();
     const { action, code, redirectUri, channelTokenId, videoId, title, description, privacyStatus,
-      igAccountId, pageAccessToken, commentId, message } = body;
+      igAccountId, pageAccessToken, commentId, message, query: searchQuery } = body;
 
     switch (action) {
 
@@ -73,6 +74,7 @@ serve(async (req) => {
           'https://www.googleapis.com/auth/youtube.upload',
           'https://www.googleapis.com/auth/youtube.readonly',
           'https://www.googleapis.com/auth/youtube',
+          'https://www.googleapis.com/auth/youtube.force-ssl',
         ].join(' ');
         const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(GOOGLE_CLIENT_ID)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scopes)}&access_type=offline&prompt=consent`;
         return ok({ success: true, data: { url } });
@@ -121,19 +123,21 @@ serve(async (req) => {
       }
 
       case 'get_channel_analytics': {
+        // Upgraded from route.ts: channel stats + recent video stats via parallel API calls
         if (!channelTokenId) return err('channelTokenId is required');
         const { data: row } = await supabase.from('youtube_tokens').select('*').eq('id', channelTokenId).maybeSingle();
         if (!row) return err('Channel not found');
         const at = await refreshToken(supabase, row, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
 
-        const [channelRes, videosRes] = await Promise.all([
-          fetch(`https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id=${row.channel_id}`, { headers: { Authorization: `Bearer ${at}` } }),
-          fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${row.channel_id}&order=date&maxResults=10&type=video`, { headers: { Authorization: `Bearer ${at}` } }),
+        const [channelRes, searchRes] = await Promise.all([
+          fetch(`https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics,contentDetails&id=${row.channel_id}`, { headers: { Authorization: `Bearer ${at}` } }),
+          fetch(`https://www.googleapis.com/youtube/v3/search?part=id&forMine=true&type=video&order=date&maxResults=10`, { headers: { Authorization: `Bearer ${at}` } }),
         ]);
+
         const channelData = await channelRes.json();
-        const videosData = await videosRes.json();
+        const searchData = await searchRes.json();
         const channelItem = channelData.items?.[0];
-        const videoIds = (videosData.items || []).map((v: any) => v.id?.videoId).filter(Boolean).join(',');
+        const videoIds = (searchData.items || []).map((v: any) => v.id?.videoId).filter(Boolean).join(',');
 
         let videos: any[] = [];
         if (videoIds) {
@@ -142,35 +146,150 @@ serve(async (req) => {
           videos = (statsData.items || []).map((v: any) => ({
             id: v.id, title: v.snippet?.title, thumbnail: v.snippet?.thumbnails?.medium?.url || v.snippet?.thumbnails?.default?.url,
             publishedAt: v.snippet?.publishedAt, viewCount: parseInt(v.statistics?.viewCount || '0'),
-            likeCount: parseInt(v.statistics?.likeCount || '0'), commentCount: parseInt(v.statistics?.commentCount || '0'), duration: v.contentDetails?.duration,
+            likeCount: parseInt(v.statistics?.likeCount || '0'), commentCount: parseInt(v.statistics?.commentCount || '0'),
+            duration: v.contentDetails?.duration,
           }));
         }
 
-        return ok({ success: true, data: { channel: { id: channelItem?.id, title: channelItem?.snippet?.title, thumbnail: channelItem?.snippet?.thumbnails?.default?.url, subscriberCount: parseInt(channelItem?.statistics?.subscriberCount || '0'), videoCount: parseInt(channelItem?.statistics?.videoCount || '0'), viewCount: parseInt(channelItem?.statistics?.viewCount || '0') }, videos } });
+        return ok({ success: true, data: {
+          channel: {
+            id: channelItem?.id, title: channelItem?.snippet?.title,
+            thumbnail: channelItem?.snippet?.thumbnails?.default?.url,
+            subscriberCount: parseInt(channelItem?.statistics?.subscriberCount || '0'),
+            videoCount: parseInt(channelItem?.statistics?.videoCount || '0'),
+            viewCount: parseInt(channelItem?.statistics?.viewCount || '0'),
+          },
+          videos,
+        }});
       }
 
       case 'list_videos': {
+        // Upgraded from route-3.ts: uses uploads playlist for reliable full video list (50 videos)
         if (!channelTokenId) return err('channelTokenId is required');
         const { data: row } = await supabase.from('youtube_tokens').select('*').eq('id', channelTokenId).maybeSingle();
         if (!row) return err('Channel not found');
         const at = await refreshToken(supabase, row, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
 
-        const searchRes = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${row.channel_id}&order=date&maxResults=50&type=video`, { headers: { Authorization: `Bearer ${at}` } });
-        const searchData = await searchRes.json();
-        const videoIds = (searchData.items || []).map((v: any) => v.id?.videoId).filter(Boolean).join(',');
+        // Step 1: Get uploads playlist ID
+        const channelRes = await fetch(
+          `https://www.googleapis.com/youtube/v3/channels?part=contentDetails&mine=true`,
+          { headers: { Authorization: `Bearer ${at}` } }
+        );
 
-        let videos: any[] = [];
-        if (videoIds) {
-          const statsRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,status&id=${videoIds}`, { headers: { Authorization: `Bearer ${at}` } });
-          const statsData = await statsRes.json();
-          videos = (statsData.items || []).map((v: any) => ({
-            id: v.id, title: v.snippet?.title || '', description: v.snippet?.description || '',
-            thumbnail: v.snippet?.thumbnails?.medium?.url || v.snippet?.thumbnails?.default?.url || '',
-            publishedAt: v.snippet?.publishedAt || '', viewCount: v.statistics?.viewCount || '0',
-            likeCount: v.statistics?.likeCount || '0', commentCount: v.statistics?.commentCount || '0',
-            privacyStatus: v.status?.privacyStatus || 'public',
-          }));
+        if (!channelRes.ok) {
+          const errorText = await channelRes.text();
+          console.error('Channel fetch error:', channelRes.status, errorText);
+          return err(`Failed to fetch channel info: ${channelRes.status}`);
         }
+
+        const channelData = await channelRes.json();
+        const uploadsPlaylistId = channelData.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
+
+        if (!uploadsPlaylistId) {
+          return ok({ success: true, videos: [] });
+        }
+
+        // Step 2: Get videos from uploads playlist (more reliable than search API)
+        const playlistRes = await fetch(
+          `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=${uploadsPlaylistId}&maxResults=50`,
+          { headers: { Authorization: `Bearer ${at}` } }
+        );
+
+        if (!playlistRes.ok) {
+          const errorText = await playlistRes.text();
+          console.error('Playlist fetch error:', playlistRes.status, errorText);
+          return err(`Failed to fetch videos: ${playlistRes.status}`);
+        }
+
+        const playlistData = await playlistRes.json();
+        const videoIds = (playlistData.items || [])
+          .map((item: any) => item.contentDetails?.videoId)
+          .filter(Boolean)
+          .join(',');
+
+        if (!videoIds) {
+          return ok({ success: true, videos: [] });
+        }
+
+        // Step 3: Get full stats + status for each video
+        const statsRes = await fetch(
+          `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,status&id=${videoIds}`,
+          { headers: { Authorization: `Bearer ${at}` } }
+        );
+
+        if (!statsRes.ok) {
+          const errorText = await statsRes.text();
+          console.error('Stats fetch error:', statsRes.status, errorText);
+          return err(`Failed to fetch video stats: ${statsRes.status}`);
+        }
+
+        const statsData = await statsRes.json();
+        const statsMap = new Map((statsData.items || []).map((item: any) => [item.id, item]));
+
+        const videos = (playlistData.items || []).map((item: any) => {
+          const vId = item.contentDetails?.videoId;
+          const stat = statsMap.get(vId) as any;
+          return {
+            id: vId,
+            title: stat?.snippet?.title || item.snippet?.title || '',
+            description: stat?.snippet?.description || '',
+            thumbnail: stat?.snippet?.thumbnails?.medium?.url || stat?.snippet?.thumbnails?.default?.url || item.snippet?.thumbnails?.medium?.url || '',
+            publishedAt: stat?.snippet?.publishedAt || item.snippet?.publishedAt || '',
+            viewCount: stat?.statistics?.viewCount || '0',
+            likeCount: stat?.statistics?.likeCount || '0',
+            commentCount: stat?.statistics?.commentCount || '0',
+            privacyStatus: stat?.status?.privacyStatus || 'public',
+          };
+        }).filter((v: any) => v.id);
+
+        return ok({ success: true, videos });
+      }
+
+      case 'search_videos': {
+        // From route-4.ts: search YouTube using API key (no OAuth required for public search)
+        if (!searchQuery) return err('query is required');
+        const apiKey = YOUTUBE_API_KEY || 'AIzaSyCJ3h3sCWy2Qe3qIWC_hmk6QLPcWHDpe5I';
+
+        const searchRes = await fetch(
+          `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(searchQuery)}&type=video&maxResults=20&key=${apiKey}`
+        );
+
+        if (!searchRes.ok) {
+          const errorText = await searchRes.text();
+          return err(`YouTube search failed: ${errorText}`);
+        }
+
+        const searchData = await searchRes.json();
+        if (searchData.error) return err(searchData.error.message || 'Search failed');
+
+        const videoIds = (searchData.items || []).map((item: any) => item.id?.videoId).filter(Boolean).join(',');
+
+        let statsMap = new Map();
+        if (videoIds) {
+          const statsRes = await fetch(
+            `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoIds}&key=${apiKey}`
+          );
+          if (statsRes.ok) {
+            const statsData = await statsRes.json();
+            statsMap = new Map((statsData.items || []).map((item: any) => [item.id, item.statistics]));
+          }
+        }
+
+        const videos = (searchData.items || []).map((item: any) => {
+          const stats = statsMap.get(item.id?.videoId);
+          return {
+            id: item.id?.videoId,
+            title: item.snippet?.title,
+            thumbnail: item.snippet?.thumbnails?.medium?.url || item.snippet?.thumbnails?.default?.url,
+            channelTitle: item.snippet?.channelTitle,
+            channelId: item.snippet?.channelId,
+            publishedAt: item.snippet?.publishedAt,
+            description: item.snippet?.description,
+            viewCount: stats?.viewCount,
+            likeCount: stats?.likeCount,
+          };
+        });
+
         return ok({ success: true, videos });
       }
 
@@ -187,7 +306,7 @@ serve(async (req) => {
         });
         const updateData = await updateRes.json();
         if (!updateRes.ok) return err(updateData.error?.message || 'Failed to update video');
-        return ok({ success: true });
+        return ok({ success: true, video: updateData });
       }
 
       case 'delete_video': {

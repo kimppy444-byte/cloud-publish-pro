@@ -52,3 +52,8 @@ export async function validateYouTubeConfig(redirectUri: string) {
 export async function disconnectYouTube(channelTokenId?: string) {
   return invokeYouTubeAuth({ action: 'disconnect', channelTokenId });
 }
+
+export async function searchYouTubeVideos(query: string) {
+  return invokeYouTubeAuth({ action: 'search_videos', query });
+}
+
