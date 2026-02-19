@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import {
   Upload as UploadIcon, Facebook, Instagram, X, Loader2, CheckCircle2, XCircle, AlertCircle,
-  Scissors, Film, Sparkles, ImageIcon, Trash2, Globe, Lock, Eye, ExternalLink, Tag
+  Scissors, Film, Sparkles, ImageIcon, Trash2, Globe, Lock, Eye, ExternalLink, Tag, Languages
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +20,7 @@ import VideoEditor from "@/components/VideoEditor";
 import VideoCommentManager from "@/components/VideoCommentManager";
 import TagSelector from "@/components/TagSelector";
 import { getStoredChannels, uploadVideoToYouTube, uploadThumbnail, getUploadDefaults } from "@/lib/youtube-direct";
-import { generateYouTubeSmartLink, generateFacebookSmartLink } from "@/lib/smart-link-api";
+import { generateYouTubeSmartLink, generateFacebookSmartLink, translateText } from "@/lib/smart-link-api";
 
 interface UploadDestination {
   id: string;
@@ -86,6 +86,21 @@ const UploadPage = () => {
   const [customShortsDuration, setCustomShortsDuration] = useState(60);
   const [allowComments, setAllowComments] = useState(true);
   const [allowRatings, setAllowRatings] = useState(true);
+
+  const [translating, setTranslating] = useState(false);
+  const [translateLang, setTranslateLang] = useState('es');
+
+  const handleTranslateDescription = async () => {
+    if (!description) { return; }
+    setTranslating(true);
+    const res = await translateText(description, translateLang, 'en');
+    if (res.success && res.translatedText) {
+      setDescription(res.translatedText);
+    } else {
+      toast.error(`Translation failed: ${res.error}`);
+    }
+    setTranslating(false);
+  };
 
   const videoPreviewUrl = useMemo(() => {
     if (!selectedFile) return null;
@@ -608,7 +623,30 @@ const UploadPage = () => {
             <Input placeholder="Enter video title" value={title} onChange={e => setTitle(e.target.value)} disabled={uploading} />
           </div>
           <div>
-            <label className="text-sm font-medium text-foreground mb-1.5 block">Description</label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-sm font-medium text-foreground">Description</label>
+              <div className="flex items-center gap-2">
+                <select value={translateLang} onChange={e => setTranslateLang(e.target.value)}
+                  className="text-xs border border-border rounded px-1.5 py-0.5 bg-background text-foreground">
+                  <option value="es">Spanish</option>
+                  <option value="fr">French</option>
+                  <option value="de">German</option>
+                  <option value="pt">Portuguese</option>
+                  <option value="it">Italian</option>
+                  <option value="ja">Japanese</option>
+                  <option value="ko">Korean</option>
+                  <option value="zh">Chinese</option>
+                  <option value="ar">Arabic</option>
+                  <option value="ru">Russian</option>
+                  <option value="hi">Hindi</option>
+                </select>
+                <Button type="button" variant="outline" size="sm" className="h-7 text-xs gap-1"
+                  onClick={handleTranslateDescription} disabled={translating || !description || uploading}>
+                  {translating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Languages className="w-3 h-3" />}
+                  Translate
+                </Button>
+              </div>
+            </div>
             <Textarea placeholder="Enter video description" rows={4} value={description} onChange={e => setDescription(e.target.value)} disabled={uploading} />
           </div>
           <div className="grid grid-cols-2 gap-4">
