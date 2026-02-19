@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Upload as UploadIcon, Facebook, Instagram, Film, X, FileVideo, Loader2, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import { Upload as UploadIcon, Facebook, Instagram, X, Loader2, CheckCircle2, XCircle, AlertCircle, Scissors } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,6 +12,8 @@ import { getYouTubeChannels } from "@/lib/youtube-api";
 import { publishToFacebook, publishToInstagram, uploadToYouTube } from "@/lib/publish-api";
 import { supabase } from "@/integrations/supabase/client";
 import VideoPreview from "@/components/VideoPreview";
+import VideoEditor from "@/components/VideoEditor";
+import TagSelector from "@/components/TagSelector";
 
 interface UploadDestination {
   id: string;
@@ -41,12 +43,13 @@ const UploadPage = () => {
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [showEditor, setShowEditor] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [destinations, setDestinations] = useState<UploadDestination[]>([]);
   const [loadingDestinations, setLoadingDestinations] = useState(true);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [tags, setTags] = useState('');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [privacy, setPrivacy] = useState('public');
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState('');
@@ -57,7 +60,6 @@ const UploadPage = () => {
       setLoadingDestinations(true);
       const dests: UploadDestination[] = [];
 
-      // Load FB/IG pages
       const res = await getFacebookPages();
       if (res.success) {
         const pages = res.data?.data || [];
@@ -87,7 +89,6 @@ const UploadPage = () => {
         }
       }
 
-      // Load all YouTube channels
       const ytRes = await getYouTubeChannels();
       if (ytRes.success && ytRes.data?.channels) {
         for (const ch of ytRes.data.channels) {
@@ -114,6 +115,7 @@ const UploadPage = () => {
       return;
     }
     setSelectedFile(file);
+    setShowEditor(false);
     toast.success(`Selected: ${file.name}`);
   };
 
@@ -162,6 +164,7 @@ const UploadPage = () => {
       toast.success('Video uploaded to storage!');
 
       const selected = destinations.filter(d => selectedAccounts.includes(d.id));
+      const tags = selectedTags.join(',');
 
       for (const dest of selected) {
         setUploadProgress(`Publishing to ${dest.name} (${dest.platform})...`);
@@ -170,12 +173,11 @@ const UploadPage = () => {
           const res = await publishToFacebook(dest.pageId, dest.pageAccessToken, publicUrl, title, description);
           publishResults.push({ destinationName: dest.name, platform: 'Facebook', success: res.success, error: res.error });
         } else if (dest.platform === 'instagram' && dest.igAccountId && dest.pageAccessToken) {
-          const caption = `${title}\n\n${description}${tags ? '\n\n' + tags.split(',').map(t => `#${t.trim()}`).join(' ') : ''}`;
+          const caption = `${title}\n\n${description}${selectedTags.length ? '\n\n' + selectedTags.map(t => `#${t}`).join(' ') : ''}`;
           const res = await publishToInstagram(dest.igAccountId, dest.pageAccessToken, publicUrl, caption);
           publishResults.push({ destinationName: dest.name, platform: 'Instagram', success: res.success, error: res.error });
         } else if (dest.platform === 'youtube') {
-          const tagArray = tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [];
-          const res = await uploadToYouTube(storagePath, title, description, tagArray, privacy);
+          const res = await uploadToYouTube(storagePath, title, description, selectedTags, privacy);
           publishResults.push({ destinationName: dest.name, platform: 'YouTube', success: res.success, error: res.error });
         }
       }
@@ -204,20 +206,26 @@ const UploadPage = () => {
         <p className="text-muted-foreground">Upload to Facebook, Instagram, and YouTube simultaneously</p>
       </motion.div>
 
-      {/* Drop zone */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.05 }}
-        className="space-y-4"
-      >
-        {selectedFile ? (
+      {/* Drop zone / preview / editor */}
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="space-y-4">
+        {selectedFile && showEditor ? (
+          <VideoEditor
+            file={selectedFile}
+            onSave={(edited) => { setSelectedFile(edited); setShowEditor(false); }}
+            onCancel={() => setShowEditor(false)}
+          />
+        ) : selectedFile ? (
           <div className="space-y-3">
             <VideoPreview file={selectedFile} />
             {!uploading && (
-              <Button variant="outline" size="sm" onClick={() => setSelectedFile(null)}>
-                <X className="w-4 h-4 mr-2" /> Remove video
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setShowEditor(true)}>
+                  <Scissors className="w-4 h-4 mr-2" /> Edit Video
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setSelectedFile(null)}>
+                  <X className="w-4 h-4 mr-2" /> Remove
+                </Button>
+              </div>
             )}
           </div>
         ) : (
@@ -251,10 +259,7 @@ const UploadPage = () => {
       </motion.div>
 
       {/* Metadata */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
         className="bg-card rounded-xl p-6 shadow-card border border-border/50 space-y-5"
       >
         <h2 className="font-display font-semibold text-foreground text-lg">Video Details</h2>
@@ -270,7 +275,7 @@ const UploadPage = () => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-sm font-medium text-foreground mb-1.5 block">Tags</label>
-              <Input placeholder="gaming, tutorial, roblox" value={tags} onChange={e => setTags(e.target.value)} disabled={uploading} />
+              <TagSelector selectedTags={selectedTags} onChange={setSelectedTags} disabled={uploading} />
             </div>
             <div>
               <label className="text-sm font-medium text-foreground mb-1.5 block">Privacy (YouTube)</label>
@@ -288,10 +293,7 @@ const UploadPage = () => {
       </motion.div>
 
       {/* Destinations */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.15 }}
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
         className="bg-card rounded-xl p-6 shadow-card border border-border/50 space-y-4"
       >
         <div className="flex items-center justify-between">
@@ -351,12 +353,7 @@ const UploadPage = () => {
       </motion.div>
 
       {/* Upload button */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="space-y-4"
-      >
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="space-y-4">
         {uploading ? (
           <div className="flex items-center gap-3 p-4 bg-card rounded-xl border border-border/50">
             <Loader2 className="w-5 h-5 animate-spin text-primary" />
