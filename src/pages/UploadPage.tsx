@@ -98,6 +98,19 @@ const UploadPage = () => {
     };
   }, [videoPreviewUrl, thumbnailPreview]);
 
+  // Load saved upload defaults on mount
+  useEffect(() => {
+    const saved = getUploadDefaults();
+    if (saved) {
+      if (saved.description) setDescription(saved.description);
+      if (saved.tags) setSelectedTags(saved.tags.split(',').map(t => t.trim()).filter(Boolean));
+      if (saved.privacy) setPrivacy(saved.privacy);
+      if (saved.category) setCategory(saved.category);
+      if (typeof saved.allowComments === 'boolean') setAllowComments(saved.allowComments);
+      if (typeof saved.allowRatings === 'boolean') setAllowRatings(saved.allowRatings);
+    }
+  }, []);
+
   useEffect(() => {
     const loadDestinations = async () => {
       setLoadingDestinations(true);
@@ -258,6 +271,40 @@ const UploadPage = () => {
                   });
                   if (slRes.success && slRes.smartLink) {
                     toast.success(`Smart link created: ${slRes.smartLink}`);
+                    // Auto-post smart link as a pinned comment
+                    try {
+                      setUploadProgress(`Posting smart link comment on ${dest.name}...`);
+                      const commentText = `🔓 Unlock exclusive content: ${slRes.smartLink}\n\n` +
+                        `Complete the required actions to access the link!`;
+                      const commentRes = await fetch(
+                        "https://www.googleapis.com/youtube/v3/commentThreads?part=snippet",
+                        {
+                          method: "POST",
+                          headers: {
+                            Authorization: `Bearer ${dest.accessToken}`,
+                            "Content-Type": "application/json",
+                          },
+                          body: JSON.stringify({
+                            snippet: {
+                              videoId: res.videoId,
+                              topLevelComment: {
+                                snippet: { textOriginal: commentText },
+                              },
+                            },
+                          }),
+                        }
+                      );
+                      if (commentRes.ok) {
+                        toast.success(`Smart link comment posted on ${dest.name}!`);
+                      } else {
+                        const errData = await commentRes.json();
+                        console.warn("Smart link comment failed:", errData);
+                        toast.warning(`Smart link created but comment failed: ${errData.error?.message || 'Unknown error'}`);
+                      }
+                    } catch (commentErr: any) {
+                      console.warn("Smart link comment error:", commentErr);
+                      toast.warning(`Smart link created but comment failed: ${commentErr.message}`);
+                    }
                   }
                 }
               }
@@ -274,10 +321,16 @@ const UploadPage = () => {
                 const { FFmpeg } = await import("@ffmpeg/ffmpeg");
                 const { toBlobURL } = await import("@ffmpeg/util");
                 const ffmpeg = new FFmpeg();
-                const cdnSources = [
+                const hasSharedArrayBuffer = typeof SharedArrayBuffer !== "undefined";
+                const mtSources = [
                   "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd",
                   "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd",
                 ];
+                const stSources = [
+                  "https://cdn.jsdelivr.net/npm/@ffmpeg/core-st@0.12.6/dist/umd",
+                  "https://unpkg.com/@ffmpeg/core-st@0.12.6/dist/umd",
+                ];
+                const cdnSources = hasSharedArrayBuffer ? [...mtSources, ...stSources] : stSources;
                 let loaded = false;
                 for (const baseURL of cdnSources) {
                   try {
