@@ -152,26 +152,15 @@ const UploadPage = () => {
         }
       }
 
-      // Load YouTube channels from both APIs
-      const ytRes = await getYouTubeChannels();
-      if (ytRes.success && ytRes.data?.channels) {
-        for (const ch of ytRes.data.channels) {
-          dests.push({
-            id: `yt-${ch.id}`, name: ch.channelTitle || 'YouTube Channel',
-            platform: "youtube", channelTokenId: ch.id,
-          });
-        }
-      }
-
-      // Also load direct token channels
+      // Load stored channels with access tokens (single source of truth)
       const storedChannels = await getStoredChannels();
       for (const ch of storedChannels) {
-        if (!dests.find(d => d.channelTokenId === ch.id)) {
-          dests.push({
-            id: `ytd-${ch.id}`, name: ch.channelTitle || 'YouTube Channel',
-            platform: "youtube", channelTokenId: ch.id, channelId: ch.channelId || undefined, accessToken: ch.accessToken,
-          });
-        }
+        dests.push({
+          id: `ytd-${ch.id}`, name: ch.channelTitle || 'YouTube Channel',
+          platform: "youtube", channelTokenId: ch.id,
+          channelId: ch.channelId || undefined,
+          accessToken: ch.accessToken,
+        });
       }
 
       setDestinations(dests);
