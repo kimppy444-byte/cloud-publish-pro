@@ -31,6 +31,7 @@ interface UploadDestination {
   pageAccessToken?: string;
   igAccountId?: string;
   channelTokenId?: string;
+  channelId?: string; // actual YouTube channel ID (UCxxx...)
   accessToken?: string;
 }
 
@@ -153,7 +154,7 @@ const UploadPage = () => {
         if (!dests.find(d => d.channelTokenId === ch.id)) {
           dests.push({
             id: `ytd-${ch.id}`, name: ch.channelTitle || 'YouTube Channel',
-            platform: "youtube", channelTokenId: ch.id, accessToken: ch.accessToken,
+            platform: "youtube", channelTokenId: ch.id, channelId: ch.channelId || undefined, accessToken: ch.accessToken,
           });
         }
       }
@@ -261,24 +262,25 @@ const UploadPage = () => {
             if (res.success && res.videoId) {
               const defaults = getUploadDefaults();
               if (defaults?.socialUnlockEnabled && defaults.socialUnlockTargetUrl) {
-                const channelId = destinations.find(d => d.id === dest.id)?.channelTokenId;
-                if (channelId) {
+                // Use the actual YouTube channel ID (UCxxx), NOT the Supabase token UUID
+                const actualChannelId = dest.channelId;
+                if (actualChannelId) {
                   const slRes = await generateYouTubeSmartLink({
                     videoId: res.videoId,
-                    channelId,
+                    channelId: actualChannelId,
                     targetUrl: defaults.socialUnlockTargetUrl,
                     actions: defaults.socialUnlockActions || { subscribe: true, like: true, comment: false },
                   });
                   if (slRes.success && slRes.smartLink) {
-                    toast.success(`Smart link created: ${slRes.smartLink}`);
+                    console.log("Smart link generated:", slRes.smartLink);
                     
                     // 1. Update video description with smart link
                     try {
                       setUploadProgress(`Adding smart link to description on ${dest.name}...`);
                       const smartLinkText = `\n\n━━━━━━━━━━━━━━━━━━━━\n🎁 UNLOCK EXCLUSIVE CONTENT\n${slRes.smartLink}\n━━━━━━━━━━━━━━━━━━━━`;
-                      const finalTitle = (isShort && videoDuration && videoDuration <= 60) ? `${title} #Shorts` : title;
-                      const finalDesc = ((isShort && videoDuration && videoDuration <= 60) ? `${description}\n\n#Shorts` : description);
-                      const updatedDescription = (finalDesc + smartLinkText).substring(0, 5000);
+                      const finalTitle2 = (isShort && videoDuration && videoDuration <= 60) ? `${title} #Shorts` : title;
+                      const finalDesc2 = (isShort && videoDuration && videoDuration <= 60) ? `${description}\n\n#Shorts` : description;
+                      const updatedDescription = (finalDesc2 + smartLinkText).substring(0, 5000);
                       
                       const updateRes = await fetch(
                         `https://www.googleapis.com/youtube/v3/videos?part=snippet`,
@@ -291,7 +293,7 @@ const UploadPage = () => {
                           body: JSON.stringify({
                             id: res.videoId,
                             snippet: {
-                              title: finalTitle.substring(0, 100),
+                              title: finalTitle2.substring(0, 100),
                               description: updatedDescription,
                               categoryId: category,
                             },
@@ -299,9 +301,10 @@ const UploadPage = () => {
                         }
                       );
                       if (updateRes.ok) {
-                        console.log("Smart link added to video description");
+                        toast.success(`Smart link added to video description on ${dest.name}!`);
                       } else {
                         console.warn("Failed to update description:", await updateRes.text());
+                        toast.warning(`Smart link generated but description update failed`);
                       }
                     } catch (descErr: any) {
                       console.warn("Description update error:", descErr);
@@ -310,7 +313,7 @@ const UploadPage = () => {
                     // 2. Auto-post smart link as a comment
                     try {
                       setUploadProgress(`Posting smart link comment on ${dest.name}...`);
-                      const commentText = `🔓 Unlock exclusive content: ${slRes.smartLink}\n\nComplete the required actions to access the link!`;
+                      const commentText = `🎁 Unlock exclusive content!\n\nComplete the required actions to access:\n${slRes.smartLink}`;
                       const commentRes = await fetch(
                         "https://www.googleapis.com/youtube/v3/commentThreads?part=snippet",
                         {
@@ -332,15 +335,18 @@ const UploadPage = () => {
                       if (commentRes.ok) {
                         toast.success(`Smart link comment posted on ${dest.name}!`);
                       } else {
-                        const errData = await commentRes.json();
+                        const errData = await commentRes.json().catch(() => ({}));
                         console.warn("Smart link comment failed:", errData);
-                        toast.warning(`Smart link created but comment failed: ${errData.error?.message || 'Unknown error'}`);
+                        toast.warning(`Smart link in description but comment failed: ${errData.error?.message || 'Unknown error'}`);
                       }
                     } catch (commentErr: any) {
                       console.warn("Smart link comment error:", commentErr);
-                      toast.warning(`Smart link created but comment failed: ${commentErr.message}`);
                     }
                   }
+                } else {
+                  // channelId not available — smart link still works but without channel-specific encoding
+                  console.warn("Smart link: actual YouTube channel ID not available, skipping smart link generation");
+                  toast.warning("Smart link skipped: reconnect your YouTube channel to enable smart links");
                 }
               }
             }
