@@ -45,24 +45,28 @@ const VideoEditor = ({ file, onSave, onCancel }: VideoEditorProps) => {
   }, []);
 
   const loadFFmpeg = async () => {
-    // Check for SharedArrayBuffer support (required by FFmpeg WASM)
-    if (typeof SharedArrayBuffer === "undefined") {
-      setLoadError(
-        "Your browser doesn't support SharedArrayBuffer, which FFmpeg requires. " +
-        "Try opening this page directly (not in an iframe) or use Chrome/Edge."
-      );
-      return;
-    }
+    const hasSharedArrayBuffer = typeof SharedArrayBuffer !== "undefined";
 
-    const CDN_SOURCES = [
+    // Multi-threaded sources (require SharedArrayBuffer)
+    const MT_SOURCES = [
       { name: "jsdelivr", url: "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd" },
       { name: "unpkg", url: "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd" },
-      { name: "jsdelivr-legacy", url: "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.4/dist/umd" },
     ];
+
+    // Single-threaded sources (no SharedArrayBuffer needed - works in iframes)
+    const ST_SOURCES = [
+      { name: "jsdelivr-st", url: "https://cdn.jsdelivr.net/npm/@ffmpeg/core-st@0.12.6/dist/umd" },
+      { name: "unpkg-st", url: "https://unpkg.com/@ffmpeg/core-st@0.12.6/dist/umd" },
+    ];
+
+    // Try multi-threaded first if supported, then fall back to single-threaded
+    const sources = hasSharedArrayBuffer
+      ? [...MT_SOURCES, ...ST_SOURCES]
+      : ST_SOURCES;
 
     const errors: string[] = [];
 
-    for (const cdn of CDN_SOURCES) {
+    for (const cdn of sources) {
       try {
         console.log(`FFmpeg: trying ${cdn.name}...`);
         const ffmpeg = new FFmpeg();
@@ -88,7 +92,7 @@ const VideoEditor = ({ file, onSave, onCancel }: VideoEditorProps) => {
     }
 
     setLoadError(
-      `FFmpeg failed to load from all CDNs. This may be a network or CORS issue. Click Retry to try again.\n${errors.join(" | ")}`
+      `FFmpeg failed to load from all sources. Click Retry to try again.\n${errors.join(" | ")}`
     );
   };
 
