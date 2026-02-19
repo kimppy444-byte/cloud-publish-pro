@@ -4,11 +4,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Facebook, Instagram, Key, User, Upload, Settings as SettingsIcon, Loader2, CheckCircle2, XCircle, ExternalLink, Unplug, Plus, Trash2 } from "lucide-react";
+import { Facebook, Instagram, Key, User, Upload, Settings as SettingsIcon, Loader2, CheckCircle2, XCircle, ExternalLink, Unplug, Plus, Trash2, Globe, Lock, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { getFacebookPages, getInstagramAccount } from "@/lib/facebook-api";
 import { getYouTubeAuthUrl, getYouTubeChannels, disconnectYouTube, validateYouTubeConfig } from "@/lib/youtube-api";
+import { getUploadDefaults, saveUploadDefaults, type UploadDefaults } from "@/lib/youtube-direct";
 
 interface ConnectedAccount {
   id: string;
@@ -31,11 +32,33 @@ const YtIcon = () => (
   </svg>
 );
 
+
+const CATEGORIES = [
+  { id: "1", name: "Film & Animation" }, { id: "2", name: "Autos & Vehicles" },
+  { id: "10", name: "Music" }, { id: "15", name: "Pets & Animals" },
+  { id: "17", name: "Sports" }, { id: "19", name: "Travel & Events" },
+  { id: "20", name: "Gaming" }, { id: "22", name: "People & Blogs" },
+  { id: "23", name: "Comedy" }, { id: "24", name: "Entertainment" },
+  { id: "25", name: "News & Politics" }, { id: "26", name: "Howto & Style" },
+  { id: "27", name: "Education" }, { id: "28", name: "Science & Technology" },
+];
+
 const SettingsPage = () => {
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(true);
   const [ytChannels, setYtChannels] = useState<YtChannel[]>([]);
   const [connectingYt, setConnectingYt] = useState(false);
+
+  // Upload defaults state
+  const [defaults, setDefaults] = useState<UploadDefaults>({
+    privacy: "private",
+    category: "22",
+    allowComments: true,
+    allowRatings: true,
+    description: "",
+    tags: "",
+  });
+  const [defaultsSaved, setDefaultsSaved] = useState(false);
 
   const loadAccounts = async () => {
     setLoadingAccounts(true);
@@ -91,6 +114,9 @@ const SettingsPage = () => {
 
   useEffect(() => {
     loadAccounts();
+    // Load saved defaults
+    const saved = getUploadDefaults();
+    if (saved) setDefaults(saved);
   }, []);
 
   const handleConnectYouTube = async () => {
@@ -278,28 +304,86 @@ const SettingsPage = () => {
         {/* Defaults Tab */}
         <TabsContent value="defaults">
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-xl p-6 shadow-card border border-border/50 space-y-5">
-            <h2 className="font-display font-semibold text-foreground">Default Upload Settings</h2>
+            <div>
+              <h2 className="font-display font-semibold text-foreground">Default Upload Settings</h2>
+              <p className="text-sm text-muted-foreground mt-1">These apply automatically to all new bulk uploads</p>
+            </div>
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-foreground mb-1.5 block">Default Title Template</label>
-                <Input placeholder="e.g., {date} - New Video" />
-              </div>
-              <div>
                 <label className="text-sm font-medium text-foreground mb-1.5 block">Default Description</label>
-                <Textarea placeholder="Enter default description template" rows={4} />
+                <Textarea
+                  placeholder="Your channel description, links, social handles…"
+                  rows={5}
+                  value={defaults.description}
+                  onChange={e => setDefaults(d => ({ ...d, description: e.target.value }))}
+                />
               </div>
               <div>
-                <label className="text-sm font-medium text-foreground mb-1.5 block">Default Tags</label>
-                <Input placeholder="gaming, tutorial, roblox" />
+                <label className="text-sm font-medium text-foreground mb-1.5 block">Default Tags (comma separated)</label>
+                <Input
+                  placeholder="gaming, tutorial, vlog"
+                  value={defaults.tags}
+                  onChange={e => setDefaults(d => ({ ...d, tags: e.target.value }))}
+                />
               </div>
-              <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
+              <div className="grid sm:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm font-medium text-foreground">Auto-apply defaults</p>
-                  <p className="text-xs text-muted-foreground">Apply these defaults to all new uploads automatically</p>
+                  <label className="text-sm font-medium text-foreground mb-1.5 block">Default Privacy</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { value: "public", icon: <Globe className="w-3.5 h-3.5" />, label: "Public" },
+                      { value: "unlisted", icon: <Eye className="w-3.5 h-3.5" />, label: "Unlisted" },
+                      { value: "private", icon: <Lock className="w-3.5 h-3.5" />, label: "Private" },
+                    ].map(opt => (
+                      <button key={opt.value} onClick={() => setDefaults(d => ({ ...d, privacy: opt.value as any }))}
+                        className={`p-2.5 rounded-lg border-2 text-center text-xs transition-all ${
+                          defaults.privacy === opt.value ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
+                        }`}>
+                        <div className="flex justify-center mb-1">{opt.icon}</div>
+                        <p className="font-semibold">{opt.label}</p>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <Switch />
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-1.5 block">Default Category</label>
+                  <select value={defaults.category}
+                    onChange={e => setDefaults(d => ({ ...d, category: e.target.value }))}
+                    className="w-full p-2 border border-border rounded-md bg-background text-foreground text-sm"
+                  >
+                    {CATEGORIES.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+                  </select>
+                </div>
               </div>
-              <Button className="bg-gradient-brand text-primary-foreground hover:opacity-90" onClick={() => toast.success("Defaults saved!")}>Save Defaults</Button>
+
+              <div className="flex gap-6 p-3 bg-muted rounded-lg">
+                {[
+                  { label: "Allow comments", key: "allowComments" as keyof UploadDefaults },
+                  { label: "Show likes/dislikes", key: "allowRatings" as keyof UploadDefaults },
+                ].map(item => (
+                  <label key={item.key} className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox"
+                      checked={defaults[item.key] as boolean}
+                      onChange={e => setDefaults(d => ({ ...d, [item.key]: e.target.checked }))}
+                      className="rounded w-4 h-4"
+                    />
+                    <span className="text-sm">{item.label}</span>
+                  </label>
+                ))}
+              </div>
+
+              <Button
+                className="bg-gradient-brand text-primary-foreground hover:opacity-90"
+                onClick={() => {
+                  saveUploadDefaults(null, defaults);
+                  setDefaultsSaved(true);
+                  toast.success("Upload defaults saved!");
+                  setTimeout(() => setDefaultsSaved(false), 2000);
+                }}
+              >
+                {defaultsSaved ? <CheckCircle2 className="w-4 h-4 mr-2" /> : null}
+                Save Defaults
+              </Button>
             </div>
           </motion.div>
         </TabsContent>
@@ -309,14 +393,6 @@ const SettingsPage = () => {
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-xl p-6 shadow-card border border-border/50 space-y-5">
             <h2 className="font-display font-semibold text-foreground">General Settings</h2>
             <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-foreground mb-1.5 block">Display Name</label>
-                <Input placeholder="Your name" />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-foreground mb-1.5 block">Email</label>
-                <Input placeholder="your@email.com" type="email" />
-              </div>
               <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
                 <div>
                   <p className="text-sm font-medium text-foreground">Email notifications</p>

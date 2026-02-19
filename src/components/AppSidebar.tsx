@@ -29,6 +29,7 @@ const navGroups = [
     label: "YouTube",
     items: [
       { to: "/upload", icon: Upload, label: "Upload Video" },
+      { to: "/bulk-upload", icon: Youtube, label: "Bulk Upload" },
       { to: "/my-videos", icon: Video, label: "My Videos" },
     ],
   },

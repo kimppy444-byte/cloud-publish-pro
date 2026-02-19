@@ -7,6 +7,7 @@ import AppLayout from "./components/AppLayout";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import Index from "./pages/Index";
 import UploadPage from "./pages/UploadPage";
+import BulkUploadPage from "./pages/BulkUploadPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
 import SocialPage from "./pages/SocialPage";
 import SettingsPage from "./pages/SettingsPage";
@@ -28,6 +29,7 @@ const App = () => (
             <Route element={<AppLayout />}>
               <Route path="/" element={<Index />} />
               <Route path="/upload" element={<UploadPage />} />
+              <Route path="/bulk-upload" element={<BulkUploadPage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
               <Route path="/social" element={<SocialPage />} />
               <Route path="/my-videos" element={<MyVideosPage />} />
@@ -44,3 +46,4 @@ const App = () => (
 );
 
 export default App;
+
