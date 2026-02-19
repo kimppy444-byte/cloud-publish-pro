@@ -271,11 +271,46 @@ const UploadPage = () => {
                   });
                   if (slRes.success && slRes.smartLink) {
                     toast.success(`Smart link created: ${slRes.smartLink}`);
-                    // Auto-post smart link as a pinned comment
+                    
+                    // 1. Update video description with smart link
+                    try {
+                      setUploadProgress(`Adding smart link to description on ${dest.name}...`);
+                      const smartLinkText = `\n\n━━━━━━━━━━━━━━━━━━━━\n🎁 UNLOCK EXCLUSIVE CONTENT\n${slRes.smartLink}\n━━━━━━━━━━━━━━━━━━━━`;
+                      const finalTitle = (isShort && videoDuration && videoDuration <= 60) ? `${title} #Shorts` : title;
+                      const finalDesc = ((isShort && videoDuration && videoDuration <= 60) ? `${description}\n\n#Shorts` : description);
+                      const updatedDescription = (finalDesc + smartLinkText).substring(0, 5000);
+                      
+                      const updateRes = await fetch(
+                        `https://www.googleapis.com/youtube/v3/videos?part=snippet`,
+                        {
+                          method: "PUT",
+                          headers: {
+                            Authorization: `Bearer ${dest.accessToken}`,
+                            "Content-Type": "application/json",
+                          },
+                          body: JSON.stringify({
+                            id: res.videoId,
+                            snippet: {
+                              title: finalTitle.substring(0, 100),
+                              description: updatedDescription,
+                              categoryId: category,
+                            },
+                          }),
+                        }
+                      );
+                      if (updateRes.ok) {
+                        console.log("Smart link added to video description");
+                      } else {
+                        console.warn("Failed to update description:", await updateRes.text());
+                      }
+                    } catch (descErr: any) {
+                      console.warn("Description update error:", descErr);
+                    }
+
+                    // 2. Auto-post smart link as a comment
                     try {
                       setUploadProgress(`Posting smart link comment on ${dest.name}...`);
-                      const commentText = `🔓 Unlock exclusive content: ${slRes.smartLink}\n\n` +
-                        `Complete the required actions to access the link!`;
+                      const commentText = `🔓 Unlock exclusive content: ${slRes.smartLink}\n\nComplete the required actions to access the link!`;
                       const commentRes = await fetch(
                         "https://www.googleapis.com/youtube/v3/commentThreads?part=snippet",
                         {
@@ -323,12 +358,14 @@ const UploadPage = () => {
                 const ffmpeg = new FFmpeg();
                 const hasSharedArrayBuffer = typeof SharedArrayBuffer !== "undefined";
                 const mtSources = [
-                  "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd",
-                  "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd",
+                  "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd",
+                  "https://unpkg.com/@ffmpeg/core@0.12.10/dist/umd",
                 ];
                 const stSources = [
-                  "https://cdn.jsdelivr.net/npm/@ffmpeg/core-st@0.12.6/dist/umd",
-                  "https://unpkg.com/@ffmpeg/core-st@0.12.6/dist/umd",
+                  "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm",
+                  "https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm",
+                  "https://cdn.jsdelivr.net/npm/@ffmpeg/core-st@0.11.1/dist/umd",
+                  "https://unpkg.com/@ffmpeg/core-st@0.11.1/dist/umd",
                 ];
                 const cdnSources = hasSharedArrayBuffer ? [...mtSources, ...stSources] : stSources;
                 let loaded = false;
