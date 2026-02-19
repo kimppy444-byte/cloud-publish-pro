@@ -45,22 +45,32 @@ const VideoEditor = ({ file, onSave, onCancel }: VideoEditorProps) => {
   }, []);
 
   const loadFFmpeg = async () => {
+    // Check for SharedArrayBuffer support (required by FFmpeg WASM)
+    if (typeof SharedArrayBuffer === "undefined") {
+      setLoadError(
+        "Your browser doesn't support SharedArrayBuffer, which FFmpeg requires. " +
+        "Try opening this page directly (not in an iframe) or use Chrome/Edge."
+      );
+      return;
+    }
+
     const CDN_SOURCES = [
-      "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd",
-      "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd",
-      "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.4/dist/umd",
+      { name: "jsdelivr", url: "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd" },
+      { name: "unpkg", url: "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd" },
+      { name: "jsdelivr-legacy", url: "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.4/dist/umd" },
     ];
 
-    for (const baseURL of CDN_SOURCES) {
+    const errors: string[] = [];
+
+    for (const cdn of CDN_SOURCES) {
       try {
+        console.log(`FFmpeg: trying ${cdn.name}...`);
         const ffmpeg = new FFmpeg();
-        ffmpeg.on("log", ({ message }) => {
-          console.log("FFmpeg:", message);
-        });
+        ffmpeg.on("log", ({ message }) => console.log("FFmpeg:", message));
 
         const [coreURL, wasmURL] = await Promise.all([
-          toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
-          toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
+          toBlobURL(`${cdn.url}/ffmpeg-core.js`, "text/javascript"),
+          toBlobURL(`${cdn.url}/ffmpeg-core.wasm`, "application/wasm"),
         ]);
 
         await ffmpeg.load({ coreURL, wasmURL });
@@ -68,14 +78,18 @@ const VideoEditor = ({ file, onSave, onCancel }: VideoEditorProps) => {
         ffmpegRef.current = ffmpeg;
         setFfmpegLoaded(true);
         setLoadError("");
-        console.log("FFmpeg loaded from:", baseURL);
+        console.log(`FFmpeg loaded from ${cdn.name}`);
         return;
-      } catch (error) {
-        console.warn(`FFmpeg load failed from ${baseURL}:`, error);
+      } catch (error: any) {
+        const msg = error?.message || String(error);
+        errors.push(`${cdn.name}: ${msg}`);
+        console.warn(`FFmpeg ${cdn.name} failed:`, msg);
       }
     }
 
-    setLoadError("FFmpeg failed to load after trying multiple sources. Try refreshing the page.");
+    setLoadError(
+      `FFmpeg failed to load from all CDNs. This may be a network or CORS issue. Click Retry to try again.\n${errors.join(" | ")}`
+    );
   };
 
   const handleLoadedMetadata = () => {

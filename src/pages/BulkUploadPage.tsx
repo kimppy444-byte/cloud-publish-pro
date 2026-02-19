@@ -18,6 +18,7 @@ import {
   uploadThumbnail,
   type StoredYouTubeChannel,
 } from "@/lib/youtube-direct";
+import { generateYouTubeSmartLink } from "@/lib/smart-link-api";
 
 type PrivacyStatus = "public" | "private" | "unlisted";
 type UploadMode = "same" | "different";
@@ -195,6 +196,22 @@ const BulkUploadPage = () => {
 
         if (video.thumbnail && result.videoId) {
           await uploadThumbnail(channelData.accessToken, result.videoId, video.thumbnail);
+        }
+
+        // Generate smart link if enabled
+        if (result.videoId && channelData.channelId) {
+          const defaults = getUploadDefaults();
+          if (defaults?.socialUnlockEnabled && defaults.socialUnlockTargetUrl) {
+            const slRes = await generateYouTubeSmartLink({
+              videoId: result.videoId,
+              channelId: channelData.channelId,
+              targetUrl: defaults.socialUnlockTargetUrl,
+              actions: defaults.socialUnlockActions || { subscribe: true, like: true, comment: false },
+            });
+            if (slRes.success && slRes.smartLink) {
+              toast.success(`Smart link: ${slRes.smartLink}`);
+            }
+          }
         }
 
         setUploadProgress(p => ({ ...p, [video.id]: Math.round(((i + 1) / targetChannelIds.length) * 100) }));
