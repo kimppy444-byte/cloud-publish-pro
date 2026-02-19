@@ -1,8 +1,9 @@
 import { motion } from "framer-motion";
-import { Facebook, Instagram, Eye, ThumbsUp, Share2, Heart, MessageCircle, Video, RefreshCw, AlertCircle, Loader2, ShieldAlert } from "lucide-react";
+import { Facebook, Instagram, Eye, ThumbsUp, Share2, Heart, MessageCircle, Video, RefreshCw, AlertCircle, Loader2, ShieldAlert, ExternalLink, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import StatCard from "@/components/StatCard";
+import CommentDialog from "@/components/CommentDialog";
 import { useEffect, useState } from "react";
 import { getFacebookPages, getPageVideos, getPageInsights, getInstagramAccount, getInstagramMedia } from "@/lib/facebook-api";
 
@@ -21,8 +22,10 @@ interface FbVideo {
   description?: string;
   created_time: string;
   views?: number;
+  length?: number;
   likes?: { summary?: { total_count?: number } };
   comments?: { summary?: { total_count?: number } };
+  thumbnails?: { data?: Array<{ uri?: string; is_preferred?: boolean }> };
 }
 
 interface IgAccount {
@@ -58,6 +61,7 @@ const SocialPage = () => {
   const [loadingIg, setLoadingIg] = useState(false);
   const [pageInsights, setPageInsights] = useState<any>(null);
   const [videoError, setVideoError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("facebook");
 
   const fetchPages = async () => {
     setLoading(true);
@@ -76,14 +80,10 @@ const SocialPage = () => {
     setLoading(false);
   };
 
-  useEffect(() => {
-    fetchPages();
-  }, []);
+  useEffect(() => { fetchPages(); }, []);
 
-  // Get the page access token for the selected page
   const getSelectedPageToken = (): string | undefined => {
-    const page = pages.find((p) => p.id === selectedPageId);
-    return page?.access_token;
+    return pages.find((p) => p.id === selectedPageId)?.access_token;
   };
 
   useEffect(() => {
@@ -109,7 +109,7 @@ const SocialPage = () => {
         videosRes.error?.includes('(#200)') ||
         videosRes.error?.includes('non-2xx')
       ) {
-        setVideoError('Your token needs the pages_read_content permission to fetch videos. You can update it in your Facebook App settings.');
+        setVideoError('Your token needs the pages_read_content permission to fetch videos.');
         setFbVideos([]);
       } else {
         setVideoError(videosRes.error || 'Failed to load videos');
@@ -139,6 +139,19 @@ const SocialPage = () => {
   }, [selectedPageId]);
 
   const selectedPage = pages.find((p) => p.id === selectedPageId);
+
+  const getVideoThumbnail = (v: FbVideo): string | undefined => {
+    if (!v.thumbnails?.data?.length) return undefined;
+    const preferred = v.thumbnails.data.find(t => t.is_preferred);
+    return (preferred || v.thumbnails.data[0])?.uri;
+  };
+
+  const formatDuration = (seconds?: number) => {
+    if (!seconds) return '';
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
 
   if (loading) {
     return (
@@ -178,7 +191,7 @@ const SocialPage = () => {
           <Facebook className="w-12 h-12 text-facebook mx-auto" />
           <div>
             <p className="font-medium text-foreground">No pages found</p>
-            <p className="text-sm text-muted-foreground mt-1">Your access token doesn't have access to any Facebook pages.</p>
+            <p className="text-sm text-muted-foreground mt-1">Connect your Facebook in Settings first.</p>
           </div>
         </div>
       </div>
@@ -187,65 +200,63 @@ const SocialPage = () => {
 
   const totalFbViews = fbVideos.reduce((s, v) => s + (v.views || 0), 0);
   const totalFbLikes = fbVideos.reduce((s, v) => s + (v.likes?.summary?.total_count || 0), 0);
+  const totalFbComments = fbVideos.reduce((s, v) => s + (v.comments?.summary?.total_count || 0), 0);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
         <div className="space-y-1">
           <h1 className="text-3xl font-display font-bold text-foreground">Facebook & Instagram</h1>
-          <p className="text-muted-foreground">
-            Manage content across your connected pages
-          </p>
+          <p className="text-muted-foreground">Manage content across your connected pages</p>
         </div>
         <Button variant="outline" onClick={fetchPages}>
           <RefreshCw className="w-4 h-4 mr-2" /> Refresh
         </Button>
       </motion.div>
 
-      {/* Page selector */}
-      {pages.length > 1 && (
-        <div className="flex gap-2 flex-wrap">
-          {pages.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => setSelectedPageId(p.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                selectedPageId === p.id
-                  ? "border-primary bg-primary/10 text-foreground"
-                  : "border-border text-muted-foreground hover:border-muted-foreground/30"
-              }`}
-            >
-              {p.picture?.data?.url && (
-                <img src={p.picture.data.url} alt="" className="w-5 h-5 rounded-full" />
-              )}
-              {p.name}
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Page selector - always show */}
+      <div className="flex gap-2 flex-wrap">
+        {pages.map((p) => (
+          <button
+            key={p.id}
+            onClick={() => setSelectedPageId(p.id)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+              selectedPageId === p.id
+                ? "border-primary bg-primary/10 text-foreground"
+                : "border-border text-muted-foreground hover:border-muted-foreground/30"
+            }`}
+          >
+            {p.picture?.data?.url && (
+              <img src={p.picture.data.url} alt="" className="w-5 h-5 rounded-full" />
+            )}
+            {p.name}
+          </button>
+        ))}
+      </div>
 
       {/* Page info bar */}
       {selectedPage && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-3 bg-card rounded-xl p-4 border border-border/50">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-4 bg-card rounded-xl p-4 border border-border/50">
           {selectedPage.picture?.data?.url && (
-            <img src={selectedPage.picture.data.url} alt="" className="w-10 h-10 rounded-lg" />
+            <img src={selectedPage.picture.data.url} alt="" className="w-12 h-12 rounded-lg" />
           )}
-          <div>
-            <p className="font-display font-semibold text-foreground">{selectedPage.name}</p>
-            <p className="text-xs text-muted-foreground">
+          <div className="flex-1">
+            <p className="font-display font-semibold text-foreground text-lg">{selectedPage.name}</p>
+            <p className="text-sm text-muted-foreground">
               {selectedPage.category} · {selectedPage.fan_count?.toLocaleString() || 0} followers
             </p>
           </div>
           {igAccount && (
-            <div className="ml-auto flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted text-sm">
               <Instagram className="w-4 h-4 text-instagram" />
-              @{igAccount.username} · {igAccount.followers_count?.toLocaleString()} followers
+              <span className="text-foreground font-medium">@{igAccount.username}</span>
+              <span className="text-muted-foreground">· {igAccount.followers_count?.toLocaleString()} followers</span>
             </div>
           )}
         </motion.div>
       )}
 
-      <Tabs defaultValue="facebook" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="bg-card border border-border">
           <TabsTrigger value="facebook" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <Facebook className="w-4 h-4 mr-2" />
@@ -259,10 +270,11 @@ const SocialPage = () => {
 
         {/* Facebook Tab */}
         <TabsContent value="facebook" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <StatCard title="Page Followers" value={pageInsights?.fan_count?.toLocaleString() || "0"} icon={Eye} platform="facebook" />
-            <StatCard title="Video Views" value={totalFbViews.toLocaleString()} icon={Eye} platform="facebook" />
-            <StatCard title="Video Likes" value={totalFbLikes.toLocaleString()} icon={ThumbsUp} platform="facebook" />
+            <StatCard title="Videos" value={fbVideos.length.toString()} icon={Video} platform="facebook" />
+            <StatCard title="Total Views" value={totalFbViews.toLocaleString()} icon={Eye} platform="facebook" />
+            <StatCard title="Total Comments" value={totalFbComments.toLocaleString()} icon={MessageCircle} platform="facebook" />
           </div>
 
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-xl shadow-card border border-border/50">
@@ -280,25 +292,64 @@ const SocialPage = () => {
             ) : fbVideos.length === 0 ? (
               <div className="p-12 text-center text-muted-foreground text-sm">No videos found on this page</div>
             ) : (
-              <div className="divide-y divide-border">
-                {fbVideos.map((v) => (
-                  <div key={v.id} className="px-5 py-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
-                        <Video className="w-5 h-5 text-facebook" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+                {fbVideos.map((v) => {
+                  const thumb = getVideoThumbnail(v);
+                  return (
+                    <div key={v.id} className="rounded-lg border border-border overflow-hidden bg-muted/30 hover:border-muted-foreground/30 transition-colors">
+                      {/* Thumbnail */}
+                      <div className="relative aspect-video bg-muted">
+                        {thumb ? (
+                          <img src={thumb} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Video className="w-8 h-8 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-10 h-10 rounded-full bg-background/80 flex items-center justify-center">
+                            <Play className="w-5 h-5 text-foreground ml-0.5" />
+                          </div>
+                        </div>
+                        {v.length && (
+                          <span className="absolute bottom-2 right-2 bg-background/80 text-foreground text-xs px-1.5 py-0.5 rounded font-mono">
+                            {formatDuration(v.length)}
+                          </span>
+                        )}
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-foreground">{v.title || 'Untitled Video'}</p>
-                        <p className="text-xs text-muted-foreground">{new Date(v.created_time).toLocaleDateString()}</p>
+                      {/* Info */}
+                      <div className="p-3 space-y-2">
+                        <p className="text-sm font-medium text-foreground line-clamp-2 min-h-[2.5rem]">
+                          {v.title || v.description || 'Untitled Video'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(v.created_time).toLocaleDateString()}
+                        </p>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1"><Eye className="w-3 h-3" /> {(v.views || 0).toLocaleString()}</span>
+                          <span className="flex items-center gap-1"><ThumbsUp className="w-3 h-3" /> {(v.likes?.summary?.total_count || 0).toLocaleString()}</span>
+                          <span className="flex items-center gap-1"><MessageCircle className="w-3 h-3" /> {(v.comments?.summary?.total_count || 0).toLocaleString()}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 pt-1">
+                          <CommentDialog
+                            objectId={v.id}
+                            platform="facebook"
+                            pageAccessToken={getSelectedPageToken()}
+                            objectTitle={v.title || v.description}
+                          />
+                          <a
+                            href={`https://www.facebook.com/${v.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-2 py-1"
+                          >
+                            <ExternalLink className="w-3 h-3" /> View
+                          </a>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-6 text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1"><Eye className="w-3.5 h-3.5" /> {(v.views || 0).toLocaleString()}</span>
-                      <span className="flex items-center gap-1"><ThumbsUp className="w-3.5 h-3.5" /> {(v.likes?.summary?.total_count || 0).toLocaleString()}</span>
-                      <span className="flex items-center gap-1"><MessageCircle className="w-3.5 h-3.5" /> {(v.comments?.summary?.total_count || 0).toLocaleString()}</span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </motion.div>
@@ -312,7 +363,10 @@ const SocialPage = () => {
             <div className="bg-card rounded-xl p-8 shadow-card border border-border/50 text-center space-y-3">
               <Instagram className="w-10 h-10 text-instagram mx-auto" />
               <p className="font-medium text-foreground">No Instagram account linked</p>
-              <p className="text-sm text-muted-foreground">This Facebook page doesn't have a linked Instagram Business account.</p>
+              <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                This Facebook page doesn't have a linked Instagram Business/Creator account.
+                Make sure your Instagram is connected to this Facebook page in Meta Business Suite.
+              </p>
             </div>
           ) : (
             <>
@@ -334,29 +388,54 @@ const SocialPage = () => {
                 {igMedia.length === 0 ? (
                   <div className="p-12 text-center text-muted-foreground text-sm">No media found</div>
                 ) : (
-                  <div className="divide-y divide-border">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
                     {igMedia.map((m) => (
-                      <div key={m.id} className="px-5 py-4 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
+                      <div key={m.id} className="rounded-lg border border-border overflow-hidden bg-muted/30 hover:border-muted-foreground/30 transition-colors">
+                        {/* Thumbnail */}
+                        <div className="relative aspect-square bg-muted">
                           {(m.thumbnail_url || m.media_url) ? (
-                            <img src={m.thumbnail_url || m.media_url} alt="" className="w-10 h-10 rounded-lg object-cover" />
+                            <img src={m.thumbnail_url || m.media_url} alt="" className="w-full h-full object-cover" />
                           ) : (
-                            <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
-                              <Instagram className="w-5 h-5 text-instagram" />
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Instagram className="w-8 h-8 text-muted-foreground" />
                             </div>
                           )}
-                          <div>
-                            <p className="text-sm font-medium text-foreground line-clamp-1 max-w-xs">
-                              {m.caption || 'No caption'}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {m.media_type?.replace('_', ' ')} · {new Date(m.timestamp).toLocaleDateString()}
-                            </p>
-                          </div>
+                          {m.media_type && (
+                            <span className="absolute top-2 right-2 bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase">
+                              {m.media_type === 'VIDEO' ? 'Reel' : m.media_type?.replace('_', ' ')}
+                            </span>
+                          )}
                         </div>
-                        <div className="flex items-center gap-6 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1"><Heart className="w-3.5 h-3.5" /> {(m.like_count || 0).toLocaleString()}</span>
-                          <span className="flex items-center gap-1"><MessageCircle className="w-3.5 h-3.5" /> {(m.comments_count || 0).toLocaleString()}</span>
+                        {/* Info */}
+                        <div className="p-3 space-y-2">
+                          <p className="text-sm text-foreground line-clamp-2 min-h-[2.5rem]">
+                            {m.caption || 'No caption'}
+                          </p>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                              <span className="flex items-center gap-1"><Heart className="w-3 h-3" /> {(m.like_count || 0).toLocaleString()}</span>
+                              <span className="flex items-center gap-1"><MessageCircle className="w-3 h-3" /> {(m.comments_count || 0).toLocaleString()}</span>
+                            </div>
+                            <span className="text-xs text-muted-foreground">{new Date(m.timestamp).toLocaleDateString()}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 pt-1">
+                            <CommentDialog
+                              objectId={m.id}
+                              platform="instagram"
+                              pageAccessToken={getSelectedPageToken()}
+                              objectTitle={m.caption}
+                            />
+                            {m.permalink && (
+                              <a
+                                href={m.permalink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-2 py-1"
+                              >
+                                <ExternalLink className="w-3 h-3" /> View on IG
+                              </a>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
