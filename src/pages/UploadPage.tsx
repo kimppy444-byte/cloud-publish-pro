@@ -19,7 +19,8 @@ import VideoPreview from "@/components/VideoPreview";
 import VideoEditor from "@/components/VideoEditor";
 import VideoCommentManager from "@/components/VideoCommentManager";
 import TagSelector from "@/components/TagSelector";
-import { getStoredChannels, uploadVideoToYouTube, uploadThumbnail } from "@/lib/youtube-direct";
+import { getStoredChannels, uploadVideoToYouTube, uploadThumbnail, getUploadDefaults } from "@/lib/youtube-direct";
+import { generateYouTubeSmartLink, generateFacebookSmartLink } from "@/lib/smart-link-api";
 
 interface UploadDestination {
   id: string;
@@ -243,6 +244,24 @@ const UploadPage = () => {
             if (res.success && res.videoId && thumbnail) {
               await uploadThumbnail(dest.accessToken, res.videoId, thumbnail);
             }
+            // Generate smart link if social unlock is enabled
+            if (res.success && res.videoId) {
+              const defaults = getUploadDefaults();
+              if (defaults?.socialUnlockEnabled && defaults.socialUnlockTargetUrl) {
+                const channelId = destinations.find(d => d.id === dest.id)?.channelTokenId;
+                if (channelId) {
+                  const slRes = await generateYouTubeSmartLink({
+                    videoId: res.videoId,
+                    channelId,
+                    targetUrl: defaults.socialUnlockTargetUrl,
+                    actions: defaults.socialUnlockActions || { subscribe: true, like: true, comment: false },
+                  });
+                  if (slRes.success && slRes.smartLink) {
+                    toast.success(`Smart link created: ${slRes.smartLink}`);
+                  }
+                }
+              }
+            }
             publishResults.push({
               destinationName: dest.name, platform: 'YouTube',
               success: res.success, error: res.error, videoId: res.videoId,
@@ -255,11 +274,22 @@ const UploadPage = () => {
                 const { FFmpeg } = await import("@ffmpeg/ffmpeg");
                 const { toBlobURL } = await import("@ffmpeg/util");
                 const ffmpeg = new FFmpeg();
-                const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd";
-                await ffmpeg.load({
-                  coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
-                  wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
-                });
+                const cdnSources = [
+                  "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd",
+                  "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd",
+                ];
+                let loaded = false;
+                for (const baseURL of cdnSources) {
+                  try {
+                    await ffmpeg.load({
+                      coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
+                      wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
+                    });
+                    loaded = true;
+                    break;
+                  } catch { continue; }
+                }
+                if (!loaded) throw new Error("FFmpeg failed to load");
                 await ffmpeg.writeFile("input.mp4", new Uint8Array(await selectedFile.arrayBuffer()));
                 await ffmpeg.exec([
                   "-i", "input.mp4", "-ss", "0", "-to", customShortsDuration.toString(),
