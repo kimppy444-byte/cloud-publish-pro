@@ -20,27 +20,25 @@ serve(async (req) => {
     const longUrl = body.url;
     if (!longUrl) return err('url is required');
 
-    // Use ulvis.net free API — no key required, private=1 keeps it unlisted
-    const apiUrl = `https://ulvis.net/API/write/get?url=${encodeURIComponent(longUrl)}&private=1&type=json`;
-
-    const res = await fetch(apiUrl, {
-      headers: { 'User-Agent': 'CloudPublishPro/1.0' },
+    // Use cleanuri.com API — free, no key required
+    const res = await fetch('https://cleanuri.com/api/v1/shorten', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: longUrl }),
     });
 
     if (!res.ok) {
-      console.error('ulvis.net error:', res.status, await res.text());
+      const text = await res.text();
+      console.error('cleanuri.com error:', res.status, text);
       return err('URL shortener service unavailable', 502);
     }
 
     const data = await res.json();
-
-    if (!data.success) {
-      console.error('ulvis.net failure:', data);
-      return err(data.error?.msg || 'Failed to shorten URL', 500);
+    const shortUrl = data.result_url;
+    if (!shortUrl) {
+      console.error('cleanuri.com unexpected response:', JSON.stringify(data));
+      return err('Failed to shorten URL', 500);
     }
-
-    const shortUrl = data.data?.url;
-    if (!shortUrl) return err('No short URL in response', 500);
 
     return ok({ success: true, shortUrl, originalUrl: longUrl });
   } catch (error: unknown) {
@@ -48,4 +46,3 @@ serve(async (req) => {
     return err(error instanceof Error ? error.message : 'Unknown error', 500);
   }
 });
-

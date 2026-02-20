@@ -274,7 +274,7 @@ const UploadPage = () => {
                     channelId: actualChannelId,
                     targetUrl: defaults.socialUnlockTargetUrl,
                     actions: defaults.socialUnlockActions || { subscribe: true, like: true, comment: false },
-                  });
+                  }, true);
                   if (slRes.success && slRes.smartLink) {
                     console.log("Smart link generated:", slRes.smartLink);
                     const headerText = defaults.socialUnlockHeader ?? "🎁 UNLOCK EXCLUSIVE CONTENT";
