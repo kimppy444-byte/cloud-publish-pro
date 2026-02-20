@@ -207,7 +207,7 @@ const BulkUploadPage = () => {
               channelId: channelData.channelId,
               targetUrl: defaults.socialUnlockTargetUrl,
               actions: defaults.socialUnlockActions || { subscribe: true, like: true, comment: false },
-            });
+            }, true);
             if (slRes.success && slRes.smartLink) {
               toast.success(`Smart link: ${slRes.smartLink}`);
             }
