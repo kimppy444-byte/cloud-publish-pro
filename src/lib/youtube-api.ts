@@ -1,5 +1,28 @@
 import { supabase } from "@/integrations/supabase/client";
 
+const CLIENT_IDS_KEY = "google_client_ids";
+const ACTIVE_CLIENT_ID_KEY = "active_google_client_id";
+
+export function getStoredClientIds(): string[] {
+  try {
+    const raw = localStorage.getItem(CLIENT_IDS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+export function saveClientIds(ids: string[]) {
+  localStorage.setItem(CLIENT_IDS_KEY, JSON.stringify(ids));
+}
+
+export function getActiveClientId(): string | null {
+  return localStorage.getItem(ACTIVE_CLIENT_ID_KEY);
+}
+
+export function setActiveClientId(id: string | null) {
+  if (id) localStorage.setItem(ACTIVE_CLIENT_ID_KEY, id);
+  else localStorage.removeItem(ACTIVE_CLIENT_ID_KEY);
+}
+
 interface ApiResult {
   success: boolean;
   data?: any;
@@ -8,7 +31,9 @@ interface ApiResult {
 
 async function invokeYouTubeAuth(body: Record<string, any>): Promise<ApiResult> {
   try {
-    const { data, error } = await supabase.functions.invoke('youtube-auth', { body });
+    const activeClientId = getActiveClientId();
+    const finalBody = activeClientId ? { ...body, clientId: activeClientId } : body;
+    const { data, error } = await supabase.functions.invoke('youtube-auth', { body: finalBody });
     if (error) {
       const context = (error as any)?.context;
       if (context && typeof context === 'object') {

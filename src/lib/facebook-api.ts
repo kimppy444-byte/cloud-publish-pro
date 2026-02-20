@@ -64,3 +64,7 @@ export async function postFacebookComment(objectId: string, message: string, pag
 export async function postInstagramComment(mediaId: string, message: string, pageAccessToken?: string) {
   return callFacebookApi('post_instagram_comment', { mediaId, message, ...(pageAccessToken ? { pageAccessToken } : {}) });
 }
+
+export async function deleteInstagramMedia(mediaId: string, pageAccessToken?: string) {
+  return callFacebookApi('delete_instagram_media', { mediaId, ...(pageAccessToken ? { pageAccessToken } : {}) });
+}

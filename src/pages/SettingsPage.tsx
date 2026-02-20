@@ -4,11 +4,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Facebook, Instagram, Key, User, Upload, Settings as SettingsIcon, Loader2, CheckCircle2, XCircle, ExternalLink, Unplug, Plus, Trash2, Globe, Lock, Eye, Link2 } from "lucide-react";
+import { Facebook, Instagram, Key, User, Upload, Settings as SettingsIcon, Loader2, CheckCircle2, XCircle, ExternalLink, Unplug, Plus, Trash2, Globe, Lock, Eye, Link2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { getFacebookPages, getInstagramAccount } from "@/lib/facebook-api";
-import { getYouTubeAuthUrl, getYouTubeChannels, disconnectYouTube, validateYouTubeConfig } from "@/lib/youtube-api";
+import { getYouTubeAuthUrl, getYouTubeChannels, disconnectYouTube, validateYouTubeConfig, getStoredClientIds, saveClientIds, getActiveClientId, setActiveClientId } from "@/lib/youtube-api";
 import { getUploadDefaults, saveUploadDefaults, type UploadDefaults } from "@/lib/youtube-direct";
 
 interface ConnectedAccount {
@@ -49,6 +49,10 @@ const SettingsPage = () => {
   const [ytChannels, setYtChannels] = useState<YtChannel[]>([]);
   const [connectingYt, setConnectingYt] = useState(false);
 
+  // Google Client ID switcher
+  const [clientIds, setClientIds] = useState<string[]>([]);
+  const [activeClientId, setActiveClientIdState] = useState<string | null>(null);
+  const [newClientId, setNewClientId] = useState("");
   // Upload defaults state
   const [defaults, setDefaults] = useState<UploadDefaults>({
     privacy: "private",
@@ -117,9 +121,11 @@ const SettingsPage = () => {
 
   useEffect(() => {
     loadAccounts();
-    // Load saved defaults
     const saved = getUploadDefaults();
     if (saved) setDefaults(saved);
+    // Load client IDs
+    setClientIds(getStoredClientIds());
+    setActiveClientIdState(getActiveClientId());
   }, []);
 
   const handleConnectYouTube = async () => {
@@ -300,6 +306,102 @@ const SettingsPage = () => {
               <p className="text-xs text-muted-foreground mt-3">
                 Note: Your Google Cloud project must have the <strong>YouTube Data API v3</strong> enabled and the redirect URI <code className="bg-muted px-1 rounded">{window.location.origin}/youtube-callback</code> registered.
               </p>
+            </div>
+            {/* Google Client ID Switcher */}
+            <div className="bg-card rounded-xl p-5 shadow-card border border-border/50">
+              <div className="flex items-center gap-3 mb-4">
+                <RefreshCw className="w-6 h-6 text-primary" />
+                <div>
+                  <p className="font-medium text-foreground">Google API Client Switcher</p>
+                  <p className="text-xs text-muted-foreground">Manage multiple Google OAuth Client IDs</p>
+                </div>
+              </div>
+
+              {clientIds.length > 0 && (
+                <div className="space-y-2 mb-4">
+                  {clientIds.map((cid, idx) => (
+                    <div key={idx} className={`flex items-center justify-between p-2.5 rounded-lg ${
+                      activeClientId === cid ? "bg-primary/10 border border-primary" : "bg-muted"
+                    }`}>
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <Key className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                        <span className="text-xs text-foreground font-mono truncate">{cid}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button variant={activeClientId === cid ? "default" : "outline"} size="sm" className="h-7 text-xs"
+                          onClick={() => {
+                            setActiveClientId(cid);
+                            setActiveClientIdState(cid);
+                            toast.success("Active Client ID updated!");
+                          }}
+                        >
+                          {activeClientId === cid ? "Active" : "Use"}
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive"
+                          onClick={() => {
+                            const updated = clientIds.filter((_, i) => i !== idx);
+                            setClientIds(updated);
+                            saveClientIds(updated);
+                            if (activeClientId === cid) {
+                              setActiveClientId(updated[0] || null);
+                              setActiveClientIdState(updated[0] || null);
+                            }
+                            toast.success("Client ID removed");
+                          }}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <Input
+                  value={newClientId}
+                  onChange={e => setNewClientId(e.target.value)}
+                  placeholder="Paste Client ID (xxx.apps.googleusercontent.com)"
+                  className="text-xs font-mono"
+                />
+                <Button size="sm" onClick={() => {
+                  if (!newClientId.trim()) return;
+                  if (clientIds.includes(newClientId.trim())) {
+                    toast.error("Client ID already exists");
+                    return;
+                  }
+                  const updated = [...clientIds, newClientId.trim()];
+                  setClientIds(updated);
+                  saveClientIds(updated);
+                  if (!activeClientId) {
+                    setActiveClientId(newClientId.trim());
+                    setActiveClientIdState(newClientId.trim());
+                  }
+                  setNewClientId("");
+                  toast.success("Client ID added!");
+                }}>
+                  <Plus className="w-4 h-4 mr-1" /> Add
+                </Button>
+              </div>
+
+              {!activeClientId && clientIds.length === 0 && (
+                <p className="text-xs text-muted-foreground mt-3">
+                  No custom Client IDs configured. The default backend Client ID will be used.
+                  Add one here if you have multiple Google Cloud projects.
+                </p>
+              )}
+              {activeClientId && (
+                <div className="mt-3 flex items-center gap-2">
+                  <Button variant="outline" size="sm" className="text-xs" onClick={() => {
+                    setActiveClientId(null);
+                    setActiveClientIdState(null);
+                    toast.success("Switched to default backend Client ID");
+                  }}>
+                    Reset to Default
+                  </Button>
+                  <span className="text-xs text-muted-foreground">Currently using custom Client ID</span>
+                </div>
+              )}
             </div>
           </motion.div>
         </TabsContent>

@@ -88,13 +88,14 @@ serve(async (req) => {
 
       case 'post_facebook_comment': {
         if (!body.objectId || !body.message) throw new Error('objectId and message are required');
-        const res = await fetch(`${GRAPH_API}/${body.objectId}/comments`, {
-          method: 'POST',
-          body: new URLSearchParams({
-            message: body.message,
-            access_token: tokenForPageOps,
-          }),
-        });
+        const res = await fetch(
+          `${GRAPH_API}/${body.objectId}/comments?access_token=${encodeURIComponent(tokenForPageOps)}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: body.message }),
+          }
+        );
         data = await res.json();
         if (!res.ok) throw new Error(`Facebook comment error [${res.status}]: ${JSON.stringify(data)}`);
         break;
@@ -102,13 +103,14 @@ serve(async (req) => {
 
       case 'post_instagram_comment': {
         if (!body.mediaId || !body.message) throw new Error('mediaId and message are required');
-        const res = await fetch(`${GRAPH_API}/${body.mediaId}/comments`, {
-          method: 'POST',
-          body: new URLSearchParams({
-            message: body.message,
-            access_token: tokenForPageOps,
-          }),
-        });
+        const res = await fetch(
+          `${GRAPH_API}/${body.mediaId}/comments?access_token=${encodeURIComponent(tokenForPageOps)}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: body.message }),
+          }
+        );
         data = await res.json();
         if (!res.ok) throw new Error(`Instagram comment error [${res.status}]: ${JSON.stringify(data)}`);
         break;
@@ -120,6 +122,21 @@ serve(async (req) => {
         );
         data = await res.json();
         if (!res.ok) throw new Error(`Facebook API error [${res.status}]: ${JSON.stringify(data)}`);
+        break;
+      }
+
+      case 'delete_instagram_media': {
+        if (!body.mediaId) throw new Error('mediaId is required');
+        const res = await fetch(
+          `${GRAPH_API}/${body.mediaId}?access_token=${encodeURIComponent(tokenForPageOps)}`,
+          { method: 'DELETE' }
+        );
+        if (res.status === 204 || res.ok) {
+          data = { success: true };
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(`Delete error [${res.status}]: ${JSON.stringify(errData)}`);
+        }
         break;
       }
 
