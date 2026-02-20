@@ -248,7 +248,42 @@ const UploadPage = () => {
         } else if (dest.platform === 'instagram' && dest.igAccountId && dest.pageAccessToken) {
           const caption = `${title}\n\n${description}${selectedTags.length ? '\n\n' + selectedTags.map(t => `#${t}`).join(' ') : ''}`;
           const res = await publishToInstagram(dest.igAccountId, dest.pageAccessToken, publicUrl, caption);
-          publishResults.push({ destinationName: dest.name, platform: 'Instagram', success: res.success, error: res.error });
+          publishResults.push({ destinationName: dest.name, platform: 'Instagram', success: res.success, error: res.error, videoId: res.data?.id });
+
+          // Smart link auto-comment for Instagram
+          if (res.success && res.data?.id) {
+            const defaults = getUploadDefaults();
+            if (defaults?.socialUnlockEnabled && defaults.socialUnlockTargetUrl) {
+              try {
+                setUploadProgress(`Generating smart link for ${dest.name}...`);
+                const slRes = await generateFacebookSmartLink({
+                  postId: res.data.id,
+                  pageId: dest.pageId || '',
+                  platform: 'instagram',
+                  targetUrl: defaults.socialUnlockTargetUrl,
+                  pageName: dest.name,
+                  postUrl: '',
+                  actions: { follow: true, like: true, comment: false },
+                }, true);
+
+                if (slRes.success && slRes.smartLink) {
+                  const bodyText = defaults.socialUnlockBody ?? "🎁 Unlock exclusive content!\n\nComplete the required actions to access:";
+                  const commentText = `${bodyText}\n${slRes.smartLink}`;
+                  setUploadProgress(`Posting smart link comment on ${dest.name}...`);
+                  const { postInstagramComment } = await import("@/lib/facebook-api");
+                  const commentRes = await postInstagramComment(res.data.id, commentText, dest.pageAccessToken);
+                  if (commentRes.success) {
+                    toast.success(`Smart link comment posted on ${dest.name}!`);
+                  } else {
+                    console.warn("IG smart link comment failed:", commentRes.error);
+                    toast.warning(`Smart link generated but comment failed: ${commentRes.error}`);
+                  }
+                }
+              } catch (err: any) {
+                console.warn("IG smart link error:", err);
+              }
+            }
+          }
         } else if (dest.platform === 'youtube') {
           // Use direct upload if we have an access token
           if (dest.accessToken) {

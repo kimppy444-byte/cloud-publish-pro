@@ -71,7 +71,9 @@ const AnalyticsPage = () => {
   const [fbVideos, setFbVideos] = useState<FbVideoItem[]>([]);
   const [loadingFbVideos, setLoadingFbVideos] = useState(false);
 
-  // Per-page IG media
+  // All IG accounts across pages
+  const [allIgAccounts, setAllIgAccounts] = useState<Array<{ igAccount: any; pageId: string; pageAccessToken: string; pageName: string }>>([]);
+  const [selectedIgAccountId, setSelectedIgAccountId] = useState<string | null>(null);
   const [igMedia, setIgMedia] = useState<any[]>([]);
   const [igAccount, setIgAccount] = useState<any>(null);
   const [loadingIgMedia, setLoadingIgMedia] = useState(false);
@@ -103,17 +105,24 @@ const AnalyticsPage = () => {
       let igFollowers = 0;
       let igPosts = 0;
 
+      const igAccounts: Array<{ igAccount: any; pageId: string; pageAccessToken: string; pageName: string }> = [];
       for (const page of pages) {
         fbFollowers += page.fan_count || 0;
         const igRes = await getInstagramAccount(page.id, page.access_token);
         if (igRes.success && igRes.data?.instagram_business_account) {
-          igFollowers += igRes.data.instagram_business_account.followers_count || 0;
-          igPosts += igRes.data.instagram_business_account.media_count || 0;
+          const igAcc = igRes.data.instagram_business_account;
+          igFollowers += igAcc.followers_count || 0;
+          igPosts += igAcc.media_count || 0;
+          igAccounts.push({ igAccount: igAcc, pageId: page.id, pageAccessToken: page.access_token, pageName: page.name });
         }
       }
       setFbTotalFollowers(fbFollowers);
       setIgTotalFollowers(igFollowers);
       setIgTotalPosts(igPosts);
+      setAllIgAccounts(igAccounts);
+      if (igAccounts.length > 0) {
+        setSelectedIgAccountId(igAccounts[0].igAccount.id);
+      }
 
       if (pages.length > 0) {
         setSelectedFbPageId(pages[0].id);
@@ -122,7 +131,7 @@ const AnalyticsPage = () => {
     setLoadingFb(false);
   };
 
-  // Load FB videos & IG media for selected page
+  // Load FB videos for selected page
   useEffect(() => {
     if (!selectedFbPageId || fbPages.length === 0) return;
     const page = fbPages.find((p: any) => p.id === selectedFbPageId);
@@ -130,36 +139,38 @@ const AnalyticsPage = () => {
 
     const loadPageContent = async () => {
       setLoadingFbVideos(true);
-      setLoadingIgMedia(true);
-
-      const [videosRes, igRes] = await Promise.all([
-        getPageVideos(selectedFbPageId, page.access_token),
-        getInstagramAccount(selectedFbPageId, page.access_token),
-      ]);
-
+      const videosRes = await getPageVideos(selectedFbPageId, page.access_token);
       if (videosRes.success) {
         setFbVideos(videosRes.data?.data || []);
       } else {
         setFbVideos([]);
       }
       setLoadingFbVideos(false);
+    };
 
-      if (igRes.success && igRes.data?.instagram_business_account) {
-        const igAcc = igRes.data.instagram_business_account;
-        setIgAccount(igAcc);
-        const mediaRes = await getInstagramMedia(igAcc.id, page.access_token);
-        if (mediaRes.success) {
-          setIgMedia(mediaRes.data?.data || []);
-        }
+    loadPageContent();
+  }, [selectedFbPageId, fbPages]);
+
+  // Load IG media for selected IG account
+  useEffect(() => {
+    if (!selectedIgAccountId || allIgAccounts.length === 0) return;
+    const entry = allIgAccounts.find(e => e.igAccount.id === selectedIgAccountId);
+    if (!entry) return;
+
+    const loadIgContent = async () => {
+      setLoadingIgMedia(true);
+      setIgAccount(entry.igAccount);
+      const mediaRes = await getInstagramMedia(entry.igAccount.id, entry.pageAccessToken);
+      if (mediaRes.success) {
+        setIgMedia(mediaRes.data?.data || []);
       } else {
-        setIgAccount(null);
         setIgMedia([]);
       }
       setLoadingIgMedia(false);
     };
 
-    loadPageContent();
-  }, [selectedFbPageId, fbPages]);
+    loadIgContent();
+  }, [selectedIgAccountId, allIgAccounts]);
 
   useEffect(() => {
     if (!selectedYtChannel) return;
@@ -411,21 +422,21 @@ const AnalyticsPage = () => {
                 <StatCard title="Total Likes" value={igMedia.reduce((s: number, m: any) => s + (m.like_count || 0), 0).toLocaleString()} icon={Heart} platform="instagram" />
               </div>
 
-              {/* IG page selector */}
-              {fbPages.length > 1 && (
+              {/* IG account selector */}
+              {allIgAccounts.length > 1 && (
                 <div className="flex gap-2 flex-wrap">
-                  {fbPages.map((p: any) => (
+                  {allIgAccounts.map((entry) => (
                     <button
-                      key={p.id}
-                      onClick={() => setSelectedFbPageId(p.id)}
+                      key={entry.igAccount.id}
+                      onClick={() => setSelectedIgAccountId(entry.igAccount.id)}
                       className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
-                        selectedFbPageId === p.id
+                        selectedIgAccountId === entry.igAccount.id
                           ? "border-primary bg-primary/10 text-foreground"
                           : "border-border text-muted-foreground hover:border-muted-foreground/30"
                       }`}
                     >
-                      {p.picture?.data?.url && <img src={p.picture.data.url} alt="" className="w-4 h-4 rounded-full" />}
-                      {p.name}
+                      <Instagram className="w-4 h-4 text-instagram" />
+                      {entry.igAccount.username ? `@${entry.igAccount.username}` : entry.pageName}
                     </button>
                   ))}
                 </div>
@@ -478,7 +489,7 @@ const AnalyticsPage = () => {
                             <CommentDialog
                               objectId={m.id}
                               platform="instagram"
-                              pageAccessToken={selectedFbPage?.access_token}
+                              pageAccessToken={allIgAccounts.find(e => e.igAccount.id === selectedIgAccountId)?.pageAccessToken}
                               objectTitle={m.caption}
                             />
                             {m.permalink && (
