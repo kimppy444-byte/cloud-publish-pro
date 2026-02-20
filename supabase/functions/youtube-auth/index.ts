@@ -41,22 +41,26 @@ serve(async (req) => {
   const err = (msg: string, status = 500) => new Response(JSON.stringify({ success: false, error: msg }), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   try {
-    const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID')!;
-    const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET')!;
+    const DEFAULT_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID')!;
+    const DEFAULT_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET')!;
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const FACEBOOK_API_KEY = Deno.env.get('FACEBOOK_API_KEY');
     const YOUTUBE_API_KEY = Deno.env.get('YOUTUBE_API_KEY');
     const GRAPH_API = 'https://graph.facebook.com/v19.0';
 
-    if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
-      return err('Google OAuth credentials not configured');
-    }
-
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const body = await req.json();
     const { action, code, redirectUri, channelTokenId, videoId, title, description, privacyStatus,
-      igAccountId, pageAccessToken, commentId, message, query: searchQuery } = body;
+      igAccountId, pageAccessToken, commentId, message, query: searchQuery, clientId: customClientId } = body;
+
+    // Allow overriding the client ID from the request (for multi-client support)
+    const GOOGLE_CLIENT_ID = customClientId || DEFAULT_CLIENT_ID;
+    const GOOGLE_CLIENT_SECRET = DEFAULT_CLIENT_SECRET;
+
+    if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+      return err('Google OAuth credentials not configured');
+    }
 
     switch (action) {
 

@@ -45,6 +45,7 @@ interface VideoUploadItem {
   showEditor: boolean;
   dualUpload: boolean;
   customShortsDuration: number;
+  repeatCount: number;
 }
 
 type UploadStatusMap = Record<string, "pending" | "uploading" | "success" | "error">;
@@ -125,6 +126,7 @@ const BulkUploadPage = () => {
       scheduled: false, scheduleTime: "",
       expandedSettings: false, previewUrl: null, duration: null,
       isShort: false, showEditor: false, dualUpload: false, customShortsDuration: 59,
+      repeatCount: 1,
     };
     setVideos(prev => [...prev, newVideo]);
   };
@@ -161,10 +163,14 @@ const BulkUploadPage = () => {
     if (!video.file || !video.title) return false;
     const targetChannelIds = uploadMode === "same" ? globalChannels : video.channels;
     if (targetChannelIds.length === 0) return false;
+    const totalRepeats = video.repeatCount || 1;
 
     try {
       setUploadStatus(p => ({ ...p, [video.id]: "uploading" }));
       const parsedTags = video.tags.split(",").map(t => t.trim()).filter(Boolean).slice(0, 30);
+
+      for (let repeatIdx = 0; repeatIdx < totalRepeats; repeatIdx++) {
+        const repeatLabel = totalRepeats > 1 ? ` (copy ${repeatIdx + 1}/${totalRepeats})` : '';
 
       for (let i = 0; i < targetChannelIds.length; i++) {
         const chId = targetChannelIds[i];
@@ -216,6 +222,7 @@ const BulkUploadPage = () => {
 
         setUploadProgress(p => ({ ...p, [video.id]: Math.round(((i + 1) / targetChannelIds.length) * 100) }));
       }
+      } // end repeatCount loop
 
       setUploadStatus(p => ({ ...p, [video.id]: "success" }));
       setStatusMessages(p => ({ ...p, [video.id]: `Uploaded to ${targetChannelIds.length} channel(s)` }));
@@ -565,6 +572,18 @@ const BulkUploadPage = () => {
                   </div>
                 </div>
               )}
+
+              {/* Repeat Count */}
+              <div className="flex items-center gap-3">
+                <label className="text-sm font-semibold">Upload Count:</label>
+                <Input type="number" min={1} max={10}
+                  value={video.repeatCount}
+                  onChange={e => updateVideo(video.id, { repeatCount: Math.max(1, Math.min(10, parseInt(e.target.value) || 1)) })}
+                  className="w-20" disabled={isUploading} />
+                {video.repeatCount > 1 && (
+                  <span className="text-xs text-muted-foreground">Will upload {video.repeatCount} copies</span>
+                )}
+              </div>
 
               {/* Shorts toggle */}
               {video.duration !== null && video.duration <= 60 && (

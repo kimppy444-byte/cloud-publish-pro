@@ -86,6 +86,7 @@ const UploadPage = () => {
   const [customShortsDuration, setCustomShortsDuration] = useState(60);
   const [allowComments, setAllowComments] = useState(true);
   const [allowRatings, setAllowRatings] = useState(true);
+  const [repeatCount, setRepeatCount] = useState(1);
 
   const [translating, setTranslating] = useState(false);
   const [translateLang, setTranslateLang] = useState('es');
@@ -239,8 +240,11 @@ const UploadPage = () => {
       const selected = destinations.filter(d => selectedAccounts.includes(d.id));
       const tags = selectedTags.join(',');
 
+      for (let repeatIdx = 0; repeatIdx < repeatCount; repeatIdx++) {
+        const repeatLabel = repeatCount > 1 ? ` (copy ${repeatIdx + 1}/${repeatCount})` : '';
+
       for (const dest of selected) {
-        setUploadProgress(`Publishing to ${dest.name} (${dest.platform})...`);
+        setUploadProgress(`Publishing to ${dest.name} (${dest.platform})${repeatLabel}...`);
 
         if (dest.platform === 'facebook' && dest.pageId && dest.pageAccessToken) {
           const res = await publishToFacebook(dest.pageId, dest.pageAccessToken, publicUrl, title, description);
@@ -462,6 +466,7 @@ const UploadPage = () => {
           }
         }
       }
+      } // end repeatCount loop
 
       setResults(publishResults);
       const successCount = publishResults.filter(r => r.success).length;
@@ -787,12 +792,23 @@ const UploadPage = () => {
             <p className="text-sm font-medium text-foreground">{uploadProgress}</p>
           </div>
         ) : (
-          <Button size="lg" className="bg-gradient-brand text-primary-foreground hover:opacity-90"
-            onClick={handleUpload} disabled={!selectedFile || selectedAccounts.length === 0 || !title.trim()}>
-            <UploadIcon className="w-4 h-4 mr-2" />
-            Upload to {selectedAccounts.length} Destination{selectedAccounts.length !== 1 ? "s" : ""}
-            {dualUpload ? " + Shorts" : ""}
-          </Button>
+          <div className="flex items-center gap-4">
+            <Button size="lg" className="bg-gradient-brand text-primary-foreground hover:opacity-90"
+              onClick={handleUpload} disabled={!selectedFile || selectedAccounts.length === 0 || !title.trim()}>
+              <UploadIcon className="w-4 h-4 mr-2" />
+              Upload to {selectedAccounts.length} Destination{selectedAccounts.length !== 1 ? "s" : ""}
+              {repeatCount > 1 ? ` × ${repeatCount}` : ""}
+              {dualUpload ? " + Shorts" : ""}
+            </Button>
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-foreground whitespace-nowrap">Repeat:</label>
+              <Input
+                type="number" min={1} max={10} value={repeatCount}
+                onChange={e => setRepeatCount(Math.max(1, Math.min(10, parseInt(e.target.value) || 1)))}
+                className="w-16 h-10" disabled={uploading}
+              />
+            </div>
+          </div>
         )}
 
         {results.length > 0 && (
