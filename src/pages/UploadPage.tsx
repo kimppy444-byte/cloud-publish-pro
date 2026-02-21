@@ -443,12 +443,56 @@ const UploadPage = () => {
                 const shortsFile = new File([shortsBlob], `shorts_${selectedFile.name}`, { type: "video/mp4" });
 
                 setUploadProgress(`Uploading Shorts version to ${dest.name}...`);
+                const shortsTitle = `${title} #Shorts`;
+                const shortsDesc = `${description}\n\n#Shorts`;
                 const shortsRes = await uploadVideoToYouTube(dest.accessToken, shortsFile, {
-                  title: `${title} #Shorts`, description: `${description}\n\n#Shorts`,
+                  title: shortsTitle, description: shortsDesc,
                   tags: [...selectedTags, "Shorts", "Short"],
                   categoryId: category, privacyStatus: privacy,
                   allowComments, allowRatings,
                 });
+
+                // Smart link for Shorts version
+                if (shortsRes.success && shortsRes.videoId) {
+                  const defaults = getUploadDefaults();
+                  if (defaults?.socialUnlockEnabled && defaults.socialUnlockTargetUrl && dest.channelId) {
+                    try {
+                      const slRes = await generateYouTubeSmartLink({
+                        videoId: shortsRes.videoId,
+                        channelId: dest.channelId,
+                        targetUrl: defaults.socialUnlockTargetUrl,
+                        actions: defaults.socialUnlockActions || { subscribe: true, like: true, comment: false },
+                      }, true);
+
+                      if (slRes.success && slRes.smartLink) {
+                        const headerText = defaults.socialUnlockHeader ?? "🎁 UNLOCK EXCLUSIVE CONTENT";
+                        const bodyText = defaults.socialUnlockBody ?? "🎁 Unlock exclusive content!\n\nComplete the required actions to access:";
+
+                        // Update Shorts description with smart link
+                        try {
+                          const smartLinkText = `\n\n━━━━━━━━━━━━━━━━━━━━\n${headerText}\n${slRes.smartLink}\n━━━━━━━━━━━━━━━━━━━━`;
+                          const updatedDesc = (shortsDesc + smartLinkText).substring(0, 5000);
+                          await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet`, {
+                            method: "PUT",
+                            headers: { Authorization: `Bearer ${dest.accessToken}`, "Content-Type": "application/json" },
+                            body: JSON.stringify({ id: shortsRes.videoId, snippet: { title: shortsTitle.substring(0, 100), description: updatedDesc, categoryId: category } }),
+                          });
+                        } catch (e) { console.warn("Shorts desc update error:", e); }
+
+                        // Post smart link comment on Shorts
+                        try {
+                          const commentText = `${bodyText}\n${slRes.smartLink}`;
+                          await fetch("https://www.googleapis.com/youtube/v3/commentThreads?part=snippet", {
+                            method: "POST",
+                            headers: { Authorization: `Bearer ${dest.accessToken}`, "Content-Type": "application/json" },
+                            body: JSON.stringify({ snippet: { videoId: shortsRes.videoId, topLevelComment: { snippet: { textOriginal: commentText } } } }),
+                          });
+                        } catch (e) { console.warn("Shorts comment error:", e); }
+                      }
+                    } catch (e) { console.warn("Shorts smart link error:", e); }
+                  }
+                }
+
                 publishResults.push({
                   destinationName: `${dest.name} (Short)`, platform: 'YouTube',
                   success: shortsRes.success, error: shortsRes.error, videoId: shortsRes.videoId,
