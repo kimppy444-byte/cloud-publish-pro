@@ -1,11 +1,13 @@
 import { motion } from "framer-motion";
-import { Facebook, Instagram, Eye, ThumbsUp, Share2, Heart, MessageCircle, Video, RefreshCw, AlertCircle, Loader2, ShieldAlert, ExternalLink, Play } from "lucide-react";
+import { Facebook, Instagram, Eye, ThumbsUp, Share2, Heart, MessageCircle, Video, RefreshCw, AlertCircle, Loader2, ShieldAlert, ExternalLink, Play, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import StatCard from "@/components/StatCard";
 import CommentDialog from "@/components/CommentDialog";
 import { useEffect, useState } from "react";
-import { getFacebookPages, getPageVideos, getPageInsights, getInstagramAccount, getInstagramMedia } from "@/lib/facebook-api";
+import { getFacebookPages, getPageVideos, getPageInsights, getInstagramAccount, getInstagramMedia, deleteInstagramMedia } from "@/lib/facebook-api";
+import { toast } from "sonner";
 
 interface FbPage {
   id: string;
@@ -62,6 +64,8 @@ const SocialPage = () => {
   const [pageInsights, setPageInsights] = useState<any>(null);
   const [videoError, setVideoError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("facebook");
+  const [deleteMediaId, setDeleteMediaId] = useState<string | null>(null);
+  const [isDeletingMedia, setIsDeletingMedia] = useState(false);
 
   const fetchPages = async () => {
     setLoading(true);
@@ -137,6 +141,28 @@ const SocialPage = () => {
 
     loadPageData();
   }, [selectedPageId]);
+
+  const handleDeleteIgMedia = async () => {
+    if (!deleteMediaId) return;
+    setIsDeletingMedia(true);
+    try {
+      const res = await deleteInstagramMedia(deleteMediaId, getSelectedPageToken());
+      if (res.success) {
+        toast.success("Post deleted from Instagram!");
+        setDeleteMediaId(null);
+        if (igAccount) {
+          const mediaRes = await getInstagramMedia(igAccount.id, getSelectedPageToken());
+          if (mediaRes.success) setIgMedia(mediaRes.data?.data || []);
+        }
+      } else {
+        toast.error(res.error || "Failed to delete");
+      }
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setIsDeletingMedia(false);
+    }
+  };
 
   const selectedPage = pages.find((p) => p.id === selectedPageId);
 
@@ -425,6 +451,9 @@ const SocialPage = () => {
                               pageAccessToken={getSelectedPageToken()}
                               objectTitle={m.caption}
                             />
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-destructive hover:text-destructive" onClick={() => setDeleteMediaId(m.id)}>
+                              <Trash2 className="w-3 h-3 mr-1" /> Delete
+                            </Button>
                             {m.permalink && (
                               <a
                                 href={m.permalink}
@@ -446,6 +475,22 @@ const SocialPage = () => {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Delete IG Media Dialog */}
+      <AlertDialog open={!!deleteMediaId} onOpenChange={v => !v && setDeleteMediaId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Instagram Post?</AlertDialogTitle>
+            <AlertDialogDescription>This will permanently delete this post from Instagram. This action cannot be undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteIgMedia} disabled={isDeletingMedia} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {isDeletingMedia ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null} Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
