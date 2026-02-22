@@ -106,11 +106,19 @@ serve(async (req) => {
 
       case 'verify_account': {
         const c = getCredentials(accountIndex);
-        const url = 'https://api.x.com/2/users/me';
+        // Use v1.1 verify_credentials which is more reliable with OAuth 1.0a
+        const url = 'https://api.x.com/1.1/account/verify_credentials.json';
         const auth = await createOAuthHeader('GET', url, c.consumerKey, c.consumerSecret, c.accessToken, c.tokenSecret);
+        console.log('Verify auth header:', auth.substring(0, 80) + '...');
         const res = await fetch(url, { headers: { Authorization: auth } });
-        const data = await res.json();
-        return json({ success: res.ok, data });
+        const text = await res.text();
+        console.log('Verify response status:', res.status, 'body:', text.substring(0, 200));
+        let data;
+        try { data = JSON.parse(text); } catch { data = { raw: text }; }
+        if (res.ok) {
+          return json({ success: true, data: { data: { username: data.screen_name, name: data.name, id: data.id_str } } });
+        }
+        return json({ success: false, data });
       }
 
       case 'upload_and_tweet': {
