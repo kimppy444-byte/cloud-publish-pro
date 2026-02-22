@@ -34,6 +34,7 @@ async function createOAuthSignature(
   const baseString = `${method.toUpperCase()}&${percentEncode(url)}&${percentEncode(sorted)}`;
   const signingKey = `${percentEncode(consumerSecret)}&${percentEncode(tokenSecret)}`;
 
+
   const key = await crypto.subtle.importKey(
     "raw", new TextEncoder().encode(signingKey),
     { name: "HMAC", hash: "SHA-1" }, false, ["sign"]
@@ -106,13 +107,10 @@ serve(async (req) => {
 
       case 'verify_account': {
         const c = getCredentials(accountIndex);
-        // Use v1.1 verify_credentials which is more reliable with OAuth 1.0a
         const url = 'https://api.x.com/1.1/account/verify_credentials.json';
         const auth = await createOAuthHeader('GET', url, c.consumerKey, c.consumerSecret, c.accessToken, c.tokenSecret);
-        console.log('Verify auth header:', auth.substring(0, 80) + '...');
         const res = await fetch(url, { headers: { Authorization: auth } });
         const text = await res.text();
-        console.log('Verify response status:', res.status, 'body:', text.substring(0, 200));
         let data;
         try { data = JSON.parse(text); } catch { data = { raw: text }; }
         if (res.ok) {
