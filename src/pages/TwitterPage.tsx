@@ -1,11 +1,12 @@
 import { motion } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
-import { Upload, Loader2, CheckCircle2, XCircle, Video, RefreshCw, Send } from "lucide-react";
+import { Upload, Loader2, CheckCircle2, XCircle, Video, RefreshCw, Send, Sparkles, Hash, Clock, Type } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { getXAccountCount, verifyXAccount, uploadAndTweet, tweetTextOnly } from "@/lib/x-api";
+import { suggestHashtags, suggestTweet, suggestBestTimes } from "@/lib/ai-suggest";
 import { supabase } from "@/integrations/supabase/client";
 
 interface AccountInfo {
@@ -32,21 +33,26 @@ const TwitterPage = () => {
   const [uploadProgress, setUploadProgress] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // AI states
+  const [aiLoading, setAiLoading] = useState<string | null>(null);
+  const [suggestedHashtags, setSuggestedHashtags] = useState<string[]>([]);
+  const [suggestedTweets, setSuggestedTweets] = useState<string[]>([]);
+  const [bestTimes, setBestTimes] = useState<any[]>([]);
+
   useEffect(() => {
     loadAccounts();
   }, []);
 
   const loadAccounts = async () => {
     const res = await getXAccountCount();
-    if (res.success && res.data?.count) {
-      const count = res.data.count;
+    const count = (res as any).count || 0;
+    if (res.success && count > 0) {
       setAccountCount(count);
       const accs: AccountInfo[] = Array.from({ length: count }, (_, i) => ({
         index: i, verified: false, loading: true,
       }));
       setAccounts(accs);
 
-      // Verify each account in parallel
       for (let i = 0; i < count; i++) {
         verifyXAccount(i).then(vRes => {
           setAccounts(prev => prev.map(a =>
@@ -85,13 +91,11 @@ const TwitterPage = () => {
 
     try {
       if (selectedFile) {
-        // Upload video to Supabase storage first
         setUploadProgress("Uploading video to storage...");
         const filePath = `x-uploads/${Date.now()}_${selectedFile.name}`;
         const { error: uploadError } = await supabase.storage.from('videos').upload(filePath, selectedFile);
         if (uploadError) throw new Error(`Storage upload failed: ${uploadError.message}`);
 
-        // Now upload to X
         setUploadProgress("Uploading to X (this may take a while)...");
         const res = await uploadAndTweet(idx, filePath, tweetText);
         if (res.success) {
@@ -103,7 +107,6 @@ const TwitterPage = () => {
           toast.error(res.error || "Failed to post to X");
         }
       } else {
-        // Text-only tweet
         setUploadProgress("Posting tweet...");
         const res = await tweetTextOnly(idx, tweetText);
         if (res.success) {
@@ -118,6 +121,53 @@ const TwitterPage = () => {
     } finally {
       setIsUploading(false);
       setUploadProgress("");
+    }
+  };
+
+  const handleAiHashtags = async () => {
+    if (!tweetText) { toast.error("Enter some text first for context"); return; }
+    setAiLoading('hashtags');
+    const res = await suggestHashtags(tweetText, 'twitter');
+    if (res.success && res.data?.hashtags) {
+      setSuggestedHashtags(res.data.hashtags);
+    } else {
+      toast.error(res.error || "Failed to get suggestions");
+    }
+    setAiLoading(null);
+  };
+
+  const handleAiTweet = async () => {
+    if (!tweetText) { toast.error("Enter a topic first"); return; }
+    setAiLoading('tweet');
+    const res = await suggestTweet(tweetText);
+    if (res.success && res.data) {
+      const tweets = [res.data.tweet, ...(res.data.alternatives || [])].filter(Boolean);
+      setSuggestedTweets(tweets);
+    } else {
+      toast.error(res.error || "Failed to get suggestions");
+    }
+    setAiLoading(null);
+  };
+
+  const handleAiBestTimes = async () => {
+    setAiLoading('times');
+    const res = await suggestBestTimes(tweetText || 'gaming content', 'twitter');
+    if (res.success && res.data?.times) {
+      setBestTimes(res.data.times);
+    } else {
+      toast.error(res.error || "Failed to get suggestions");
+    }
+    setAiLoading(null);
+  };
+
+  const appendHashtags = (tags: string[]) => {
+    const newText = tweetText + (tweetText ? '\n' : '') + tags.join(' ');
+    if (newText.length <= 280) {
+      setTweetText(newText);
+      setSuggestedHashtags([]);
+      toast.success("Hashtags added!");
+    } else {
+      toast.error("Adding hashtags would exceed 280 chars");
     }
   };
 
@@ -209,11 +259,83 @@ const TwitterPage = () => {
           <Textarea
             value={tweetText}
             onChange={e => setTweetText(e.target.value)}
-            placeholder="What's happening?"
+            placeholder="What's happening? (Enter a topic and use AI tools below)"
             rows={4}
             maxLength={280}
           />
           <p className="text-xs text-muted-foreground mt-1 text-right">{tweetText.length}/280</p>
+        </div>
+
+        {/* AI Tools */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-primary" />
+            <span className="text-sm font-medium text-foreground">AI Tools</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={handleAiHashtags} disabled={!!aiLoading}>
+              {aiLoading === 'hashtags' ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Hash className="w-3 h-3 mr-1" />}
+              Suggest Hashtags
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleAiTweet} disabled={!!aiLoading}>
+              {aiLoading === 'tweet' ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Type className="w-3 h-3 mr-1" />}
+              Write Tweet
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleAiBestTimes} disabled={!!aiLoading}>
+              {aiLoading === 'times' ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Clock className="w-3 h-3 mr-1" />}
+              Best Post Times
+            </Button>
+          </div>
+
+          {/* Hashtag suggestions */}
+          {suggestedHashtags.length > 0 && (
+            <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-foreground">Suggested Hashtags</span>
+                <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => appendHashtags(suggestedHashtags)}>
+                  Add All
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {suggestedHashtags.map((tag, i) => (
+                  <button key={i} onClick={() => appendHashtags([tag])}
+                    className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Tweet suggestions */}
+          {suggestedTweets.length > 0 && (
+            <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 space-y-2">
+              <span className="text-xs font-medium text-foreground">Suggested Tweets</span>
+              <div className="space-y-2">
+                {suggestedTweets.map((tweet, i) => (
+                  <button key={i} onClick={() => { setTweetText(tweet); setSuggestedTweets([]); toast.success("Tweet applied!"); }}
+                    className="block w-full text-left text-sm p-2 rounded bg-background border border-border hover:border-primary/50 transition-colors">
+                    {tweet}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Best times */}
+          {bestTimes.length > 0 && (
+            <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 space-y-2">
+              <span className="text-xs font-medium text-foreground">Best Posting Times</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {bestTimes.slice(0, 6).map((t, i) => (
+                  <div key={i} className="text-xs p-2 rounded bg-background border border-border">
+                    <span className="font-medium text-foreground">{t.day} {t.time}</span>
+                    {t.reason && <p className="text-muted-foreground mt-0.5">{t.reason}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div>
