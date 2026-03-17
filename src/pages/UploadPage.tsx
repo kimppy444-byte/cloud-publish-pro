@@ -108,6 +108,33 @@ const UploadPage = () => {
     setTranslating(false);
   };
 
+  const handleAiImproveDesc = async () => {
+    if (!description) { toast.error("Enter a description first"); return; }
+    setAiLoading('description');
+    const res = await improveDescription(description, 'youtube');
+    if (res.success && res.data?.improved) {
+      setDescription(res.data.improved);
+      toast.success("Description improved!");
+    } else {
+      toast.error(res.error || "Failed to improve description");
+    }
+    setAiLoading(null);
+  };
+
+  const handleAiSuggestTags = async () => {
+    const context = `${title} ${description}`.trim();
+    if (!context) { toast.error("Enter a title or description first"); return; }
+    setAiLoading('tags');
+    const res = await suggestHashtags(context, 'youtube');
+    if (res.success && res.data?.hashtags) {
+      const tags = res.data.hashtags.map((t: string) => t.replace(/^#/, ''));
+      setAiSuggestedTags(tags);
+    } else {
+      toast.error(res.error || "Failed to suggest tags");
+    }
+    setAiLoading(null);
+  };
+
   const videoPreviewUrl = useMemo(() => {
     if (!selectedFile) return null;
     return URL.createObjectURL(selectedFile);
