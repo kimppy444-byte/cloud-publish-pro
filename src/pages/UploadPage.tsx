@@ -733,6 +733,11 @@ const UploadPage = () => {
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-sm font-medium text-foreground">Description</label>
               <div className="flex items-center gap-2">
+                <Button type="button" variant="outline" size="sm" className="h-7 text-xs gap-1"
+                  onClick={handleAiImproveDesc} disabled={!!aiLoading || !description || uploading}>
+                  {aiLoading === 'description' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                  AI Improve
+                </Button>
                 <select value={translateLang} onChange={e => setTranslateLang(e.target.value)}
                   className="text-xs border border-border rounded px-1.5 py-0.5 bg-background text-foreground">
                   <option value="es">Spanish</option>
