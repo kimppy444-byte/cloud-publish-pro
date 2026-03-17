@@ -92,6 +92,10 @@ const UploadPage = () => {
   const [translating, setTranslating] = useState(false);
   const [translateLang, setTranslateLang] = useState('es');
 
+  // AI states
+  const [aiLoading, setAiLoading] = useState<string | null>(null);
+  const [aiSuggestedTags, setAiSuggestedTags] = useState<string[]>([]);
+
   const handleTranslateDescription = async () => {
     if (!description) { return; }
     setTranslating(true);
