@@ -26,7 +26,7 @@ const XIcon = () => (
 const TwitterPage = () => {
   const [accountCount, setAccountCount] = useState(0);
   const [accounts, setAccounts] = useState<AccountInfo[]>([]);
-  const [selectedAccounts, setSelectedAccounts] = useState<number[]>([0]);
+  const [selectedAccounts, setSelectedAccounts] = useState<number[]>([]);
   const [tweetText, setTweetText] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -87,7 +87,7 @@ const TwitterPage = () => {
   };
 
   const selectAllAccounts = () => {
-    const verified = accounts.filter(a => a.verified).map(a => a.index);
+    const verified = accounts.filter(a => a.verified && a.index !== 0).map(a => a.index);
     if (selectedAccounts.length === verified.length) {
       setSelectedAccounts([]);
     } else {
@@ -236,13 +236,13 @@ const TwitterPage = () => {
                   <div key={acc.index} className={`p-3 rounded-lg border transition-colors cursor-pointer ${
                     selectedAccounts.includes(acc.index) ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30"
                   } ${!acc.verified && !acc.loading ? 'opacity-50' : ''}`}
-                    onClick={() => acc.verified && toggleAccount(acc.index)}>
+                    onClick={() => acc.verified && acc.index !== 0 && toggleAccount(acc.index)}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 flex-1 min-w-0">
                         <Checkbox
                           checked={selectedAccounts.includes(acc.index)}
-                          onCheckedChange={() => acc.verified && toggleAccount(acc.index)}
-                          disabled={!acc.verified || acc.loading}
+                          onCheckedChange={() => acc.verified && acc.index !== 0 && toggleAccount(acc.index)}
+                          disabled={!acc.verified || acc.loading || acc.index === 0}
                           className="flex-shrink-0"
                         />
                         <div className="w-8 h-8 rounded-full bg-foreground text-background flex items-center justify-center text-xs font-bold flex-shrink-0">
