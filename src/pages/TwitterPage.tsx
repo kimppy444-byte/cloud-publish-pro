@@ -87,7 +87,7 @@ const TwitterPage = () => {
   };
 
   const selectAllAccounts = () => {
-    const verified = accounts.filter(a => a.verified).map(a => a.index);
+    const verified = accounts.filter(a => a.verified && a.index !== 0).map(a => a.index);
     if (selectedAccounts.length === verified.length) {
       setSelectedAccounts([]);
     } else {
