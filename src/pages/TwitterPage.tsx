@@ -224,38 +224,53 @@ const TwitterPage = () => {
           {accounts.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">No X accounts configured. Add your credentials in backend secrets.</p>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {accounts.map(acc => (
-                <div key={acc.index} className={`p-3 rounded-lg border transition-colors ${
-                  selectedAccount === acc.index.toString() ? "border-primary bg-primary/5" : "border-border"
-                }`}>
-                  <div className="flex items-center justify-between">
-                    <button onClick={() => setSelectedAccount(acc.index.toString())} className="flex items-center gap-2 text-left flex-1">
-                      <div className="w-8 h-8 rounded-full bg-foreground text-background flex items-center justify-center text-xs font-bold">
-                        {acc.index + 1}
+            <>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs text-muted-foreground">{selectedAccounts.length} of {accounts.filter(a => a.verified).length} selected</span>
+                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={selectAllAccounts}>
+                  {selectedAccounts.length === accounts.filter(a => a.verified).length ? 'Deselect All' : 'Select All'}
+                </Button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {accounts.map(acc => (
+                  <div key={acc.index} className={`p-3 rounded-lg border transition-colors cursor-pointer ${
+                    selectedAccounts.includes(acc.index) ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30"
+                  } ${!acc.verified && !acc.loading ? 'opacity-50' : ''}`}
+                    onClick={() => acc.verified && toggleAccount(acc.index)}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <Checkbox
+                          checked={selectedAccounts.includes(acc.index)}
+                          onCheckedChange={() => acc.verified && toggleAccount(acc.index)}
+                          disabled={!acc.verified || acc.loading}
+                          className="flex-shrink-0"
+                        />
+                        <div className="w-8 h-8 rounded-full bg-foreground text-background flex items-center justify-center text-xs font-bold flex-shrink-0">
+                          {acc.index + 1}
+                        </div>
+                        <div className="min-w-0">
+                          {acc.loading ? (
+                            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                          ) : acc.verified ? (
+                            <>
+                              <p className="text-sm font-medium text-foreground truncate">@{acc.username}</p>
+                              <p className="text-xs text-muted-foreground truncate">{acc.name}</p>
+                            </>
+                          ) : (
+                            <p className="text-xs text-destructive">Not verified</p>
+                          )}
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        {acc.loading ? (
-                          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                        ) : acc.verified ? (
-                          <>
-                            <p className="text-sm font-medium text-foreground truncate">@{acc.username}</p>
-                            <p className="text-xs text-muted-foreground truncate">{acc.name}</p>
-                          </>
-                        ) : (
-                          <p className="text-xs text-destructive">Not verified</p>
-                        )}
-                      </div>
-                    </button>
-                    {!acc.loading && (
-                      acc.verified
-                        ? <CheckCircle2 className="w-4 h-4 text-success flex-shrink-0" />
-                        : <XCircle className="w-4 h-4 text-destructive flex-shrink-0" />
-                    )}
+                      {!acc.loading && (
+                        acc.verified
+                          ? <CheckCircle2 className="w-4 h-4 text-success flex-shrink-0" />
+                          : <XCircle className="w-4 h-4 text-destructive flex-shrink-0" />
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
       </motion.div>
