@@ -26,7 +26,7 @@ const XIcon = () => (
 const TwitterPage = () => {
   const [accountCount, setAccountCount] = useState(0);
   const [accounts, setAccounts] = useState<AccountInfo[]>([]);
-  const [selectedAccount, setSelectedAccount] = useState("0");
+  const [selectedAccounts, setSelectedAccounts] = useState<number[]>([0]);
   const [tweetText, setTweetText] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
