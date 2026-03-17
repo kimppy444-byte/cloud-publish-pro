@@ -763,8 +763,37 @@ const UploadPage = () => {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-medium text-foreground mb-1.5 block">Tags</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-sm font-medium text-foreground">Tags</label>
+                <Button type="button" variant="outline" size="sm" className="h-7 text-xs gap-1"
+                  onClick={handleAiSuggestTags} disabled={!!aiLoading || uploading}>
+                  {aiLoading === 'tags' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                  AI Suggest
+                </Button>
+              </div>
               <TagSelector selectedTags={selectedTags} onChange={setSelectedTags} disabled={uploading} />
+              {aiSuggestedTags.length > 0 && (
+                <div className="mt-2 p-2 bg-primary/5 border border-primary/20 rounded-lg">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-medium text-foreground">Suggested Tags</span>
+                    <button className="text-xs text-primary hover:underline" onClick={() => {
+                      setSelectedTags(prev => [...new Set([...prev, ...aiSuggestedTags])]);
+                      setAiSuggestedTags([]);
+                      toast.success("Tags added!");
+                    }}>Add All</button>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {aiSuggestedTags.map((tag, i) => (
+                      <button key={i} onClick={() => {
+                        setSelectedTags(prev => prev.includes(tag) ? prev : [...prev, tag]);
+                        setAiSuggestedTags(prev => prev.filter(t => t !== tag));
+                      }} className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+                        +{tag}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
             <div>
               <label className="text-sm font-medium text-foreground mb-1.5 block">Category</label>

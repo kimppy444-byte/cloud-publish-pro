@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { Upload, Loader2, CheckCircle2, XCircle, Video, RefreshCw, Send, Sparkles, Hash, Clock, Type } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { getXAccountCount, verifyXAccount, uploadAndTweet, tweetTextOnly } from "@/lib/x-api";
 import { suggestHashtags, suggestTweet, suggestBestTimes } from "@/lib/ai-suggest";
