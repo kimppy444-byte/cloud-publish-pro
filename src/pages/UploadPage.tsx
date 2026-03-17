@@ -21,6 +21,7 @@ import VideoCommentManager from "@/components/VideoCommentManager";
 import TagSelector from "@/components/TagSelector";
 import { getStoredChannels, uploadVideoToYouTube, uploadThumbnail, getUploadDefaults } from "@/lib/youtube-direct";
 import { generateYouTubeSmartLink, generateFacebookSmartLink, translateText } from "@/lib/smart-link-api";
+import { suggestHashtags, improveDescription } from "@/lib/ai-suggest";
 
 interface UploadDestination {
   id: string;
@@ -91,6 +92,10 @@ const UploadPage = () => {
   const [translating, setTranslating] = useState(false);
   const [translateLang, setTranslateLang] = useState('es');
 
+  // AI states
+  const [aiLoading, setAiLoading] = useState<string | null>(null);
+  const [aiSuggestedTags, setAiSuggestedTags] = useState<string[]>([]);
+
   const handleTranslateDescription = async () => {
     if (!description) { return; }
     setTranslating(true);
@@ -101,6 +106,33 @@ const UploadPage = () => {
       toast.error(`Translation failed: ${res.error}`);
     }
     setTranslating(false);
+  };
+
+  const handleAiImproveDesc = async () => {
+    if (!description) { toast.error("Enter a description first"); return; }
+    setAiLoading('description');
+    const res = await improveDescription(description, 'youtube');
+    if (res.success && res.data?.improved) {
+      setDescription(res.data.improved);
+      toast.success("Description improved!");
+    } else {
+      toast.error(res.error || "Failed to improve description");
+    }
+    setAiLoading(null);
+  };
+
+  const handleAiSuggestTags = async () => {
+    const context = `${title} ${description}`.trim();
+    if (!context) { toast.error("Enter a title or description first"); return; }
+    setAiLoading('tags');
+    const res = await suggestHashtags(context, 'youtube');
+    if (res.success && res.data?.hashtags) {
+      const tags = res.data.hashtags.map((t: string) => t.replace(/^#/, ''));
+      setAiSuggestedTags(tags);
+    } else {
+      toast.error(res.error || "Failed to suggest tags");
+    }
+    setAiLoading(null);
   };
 
   const videoPreviewUrl = useMemo(() => {
@@ -701,6 +733,11 @@ const UploadPage = () => {
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-sm font-medium text-foreground">Description</label>
               <div className="flex items-center gap-2">
+                <Button type="button" variant="outline" size="sm" className="h-7 text-xs gap-1"
+                  onClick={handleAiImproveDesc} disabled={!!aiLoading || !description || uploading}>
+                  {aiLoading === 'description' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                  AI Improve
+                </Button>
                 <select value={translateLang} onChange={e => setTranslateLang(e.target.value)}
                   className="text-xs border border-border rounded px-1.5 py-0.5 bg-background text-foreground">
                   <option value="es">Spanish</option>
@@ -726,8 +763,37 @@ const UploadPage = () => {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-medium text-foreground mb-1.5 block">Tags</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-sm font-medium text-foreground">Tags</label>
+                <Button type="button" variant="outline" size="sm" className="h-7 text-xs gap-1"
+                  onClick={handleAiSuggestTags} disabled={!!aiLoading || uploading}>
+                  {aiLoading === 'tags' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                  AI Suggest
+                </Button>
+              </div>
               <TagSelector selectedTags={selectedTags} onChange={setSelectedTags} disabled={uploading} />
+              {aiSuggestedTags.length > 0 && (
+                <div className="mt-2 p-2 bg-primary/5 border border-primary/20 rounded-lg">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-medium text-foreground">Suggested Tags</span>
+                    <button className="text-xs text-primary hover:underline" onClick={() => {
+                      setSelectedTags(prev => [...new Set([...prev, ...aiSuggestedTags])]);
+                      setAiSuggestedTags([]);
+                      toast.success("Tags added!");
+                    }}>Add All</button>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {aiSuggestedTags.map((tag, i) => (
+                      <button key={i} onClick={() => {
+                        setSelectedTags(prev => prev.includes(tag) ? prev : [...prev, tag]);
+                        setAiSuggestedTags(prev => prev.filter(t => t !== tag));
+                      }} className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+                        +{tag}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
             <div>
               <label className="text-sm font-medium text-foreground mb-1.5 block">Category</label>

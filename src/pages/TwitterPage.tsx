@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { Upload, Loader2, CheckCircle2, XCircle, Video, RefreshCw, Send, Sparkles, Hash, Clock, Type } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { getXAccountCount, verifyXAccount, uploadAndTweet, tweetTextOnly } from "@/lib/x-api";
 import { suggestHashtags, suggestTweet, suggestBestTimes } from "@/lib/ai-suggest";
@@ -26,7 +26,7 @@ const XIcon = () => (
 const TwitterPage = () => {
   const [accountCount, setAccountCount] = useState(0);
   const [accounts, setAccounts] = useState<AccountInfo[]>([]);
-  const [selectedAccount, setSelectedAccount] = useState("0");
+  const [selectedAccounts, setSelectedAccounts] = useState<number[]>([0]);
   const [tweetText, setTweetText] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -80,41 +80,68 @@ const TwitterPage = () => {
     }
   };
 
+  const toggleAccount = (idx: number) => {
+    setSelectedAccounts(prev =>
+      prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx]
+    );
+  };
+
+  const selectAllAccounts = () => {
+    const verified = accounts.filter(a => a.verified).map(a => a.index);
+    if (selectedAccounts.length === verified.length) {
+      setSelectedAccounts([]);
+    } else {
+      setSelectedAccounts(verified);
+    }
+  };
+
   const handleUpload = async () => {
     if (!tweetText && !selectedFile) {
       toast.error("Add tweet text or select a video");
       return;
     }
+    if (selectedAccounts.length === 0) {
+      toast.error("Select at least one account");
+      return;
+    }
 
     setIsUploading(true);
-    const idx = parseInt(selectedAccount);
+    let filePath = '';
 
     try {
       if (selectedFile) {
         setUploadProgress("Uploading video to storage...");
-        const filePath = `x-uploads/${Date.now()}_${selectedFile.name}`;
+        filePath = `x-uploads/${Date.now()}_${selectedFile.name}`;
         const { error: uploadError } = await supabase.storage.from('videos').upload(filePath, selectedFile);
         if (uploadError) throw new Error(`Storage upload failed: ${uploadError.message}`);
+      }
 
-        setUploadProgress("Uploading to X (this may take a while)...");
-        const res = await uploadAndTweet(idx, filePath, tweetText);
-        if (res.success) {
-          toast.success("Video posted to X successfully!");
-          setTweetText("");
-          setSelectedFile(null);
-          if (fileInputRef.current) fileInputRef.current.value = "";
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const idx of selectedAccounts) {
+        const accLabel = accounts.find(a => a.index === idx)?.username || `Account ${idx + 1}`;
+        if (selectedFile) {
+          setUploadProgress(`Posting video to @${accLabel}...`);
+          const res = await uploadAndTweet(idx, filePath, tweetText);
+          if (res.success) successCount++;
+          else { failCount++; toast.error(`@${accLabel}: ${res.error || "Failed"}`); }
         } else {
-          toast.error(res.error || "Failed to post to X");
+          setUploadProgress(`Posting tweet to @${accLabel}...`);
+          const res = await tweetTextOnly(idx, tweetText);
+          if (res.success) successCount++;
+          else { failCount++; toast.error(`@${accLabel}: ${res.error || "Failed"}`); }
         }
-      } else {
-        setUploadProgress("Posting tweet...");
-        const res = await tweetTextOnly(idx, tweetText);
-        if (res.success) {
-          toast.success("Tweet posted!");
-          setTweetText("");
-        } else {
-          toast.error(res.error || "Failed to post tweet");
-        }
+      }
+
+      if (successCount > 0) {
+        toast.success(`Posted to ${successCount} account${successCount > 1 ? 's' : ''}!`);
+        setTweetText("");
+        setSelectedFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      }
+      if (failCount > 0 && successCount === 0) {
+        toast.error("All posts failed");
       }
     } catch (err: any) {
       toast.error(err.message || "Upload failed");
@@ -197,38 +224,53 @@ const TwitterPage = () => {
           {accounts.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">No X accounts configured. Add your credentials in backend secrets.</p>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {accounts.map(acc => (
-                <div key={acc.index} className={`p-3 rounded-lg border transition-colors ${
-                  selectedAccount === acc.index.toString() ? "border-primary bg-primary/5" : "border-border"
-                }`}>
-                  <div className="flex items-center justify-between">
-                    <button onClick={() => setSelectedAccount(acc.index.toString())} className="flex items-center gap-2 text-left flex-1">
-                      <div className="w-8 h-8 rounded-full bg-foreground text-background flex items-center justify-center text-xs font-bold">
-                        {acc.index + 1}
+            <>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs text-muted-foreground">{selectedAccounts.length} of {accounts.filter(a => a.verified).length} selected</span>
+                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={selectAllAccounts}>
+                  {selectedAccounts.length === accounts.filter(a => a.verified).length ? 'Deselect All' : 'Select All'}
+                </Button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {accounts.map(acc => (
+                  <div key={acc.index} className={`p-3 rounded-lg border transition-colors cursor-pointer ${
+                    selectedAccounts.includes(acc.index) ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30"
+                  } ${!acc.verified && !acc.loading ? 'opacity-50' : ''}`}
+                    onClick={() => acc.verified && toggleAccount(acc.index)}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <Checkbox
+                          checked={selectedAccounts.includes(acc.index)}
+                          onCheckedChange={() => acc.verified && toggleAccount(acc.index)}
+                          disabled={!acc.verified || acc.loading}
+                          className="flex-shrink-0"
+                        />
+                        <div className="w-8 h-8 rounded-full bg-foreground text-background flex items-center justify-center text-xs font-bold flex-shrink-0">
+                          {acc.index + 1}
+                        </div>
+                        <div className="min-w-0">
+                          {acc.loading ? (
+                            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                          ) : acc.verified ? (
+                            <>
+                              <p className="text-sm font-medium text-foreground truncate">@{acc.username}</p>
+                              <p className="text-xs text-muted-foreground truncate">{acc.name}</p>
+                            </>
+                          ) : (
+                            <p className="text-xs text-destructive">Not verified</p>
+                          )}
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        {acc.loading ? (
-                          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                        ) : acc.verified ? (
-                          <>
-                            <p className="text-sm font-medium text-foreground truncate">@{acc.username}</p>
-                            <p className="text-xs text-muted-foreground truncate">{acc.name}</p>
-                          </>
-                        ) : (
-                          <p className="text-xs text-destructive">Not verified</p>
-                        )}
-                      </div>
-                    </button>
-                    {!acc.loading && (
-                      acc.verified
-                        ? <CheckCircle2 className="w-4 h-4 text-success flex-shrink-0" />
-                        : <XCircle className="w-4 h-4 text-destructive flex-shrink-0" />
-                    )}
+                      {!acc.loading && (
+                        acc.verified
+                          ? <CheckCircle2 className="w-4 h-4 text-success flex-shrink-0" />
+                          : <XCircle className="w-4 h-4 text-destructive flex-shrink-0" />
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
       </motion.div>
@@ -238,20 +280,13 @@ const TwitterPage = () => {
         className="bg-card rounded-xl shadow-card border border-border/50 p-6 space-y-5">
         <h2 className="font-display font-semibold text-foreground text-lg">Post to X</h2>
 
-        <div>
-          <label className="text-sm font-medium text-foreground block mb-1.5">Account</label>
-          <Select value={selectedAccount} onValueChange={setSelectedAccount}>
-            <SelectTrigger className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {accounts.map(acc => (
-                <SelectItem key={acc.index} value={acc.index.toString()}>
-                  Account {acc.index + 1} {acc.username ? `(@${acc.username})` : ''}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span>Posting to <strong className="text-foreground">{selectedAccounts.length}</strong> account{selectedAccounts.length !== 1 ? 's' : ''}</span>
+          {selectedAccounts.length > 0 && (
+            <span className="text-xs">
+              ({selectedAccounts.map(i => accounts.find(a => a.index === i)?.username ? `@${accounts.find(a => a.index === i)?.username}` : `#${i+1}`).join(', ')})
+            </span>
+          )}
         </div>
 
         <div>
@@ -372,7 +407,7 @@ const TwitterPage = () => {
 
         <Button
           onClick={handleUpload}
-          disabled={isUploading || (!tweetText && !selectedFile)}
+          disabled={isUploading || (!tweetText && !selectedFile) || selectedAccounts.length === 0}
           className="w-full bg-foreground text-background hover:bg-foreground/90"
         >
           {isUploading ? (
@@ -380,7 +415,7 @@ const TwitterPage = () => {
           ) : (
             <Send className="w-4 h-4 mr-2" />
           )}
-          {selectedFile ? "Upload & Tweet" : "Post Tweet"}
+          {selectedFile ? `Upload & Tweet to ${selectedAccounts.length} Account${selectedAccounts.length !== 1 ? 's' : ''}` : `Post to ${selectedAccounts.length} Account${selectedAccounts.length !== 1 ? 's' : ''}`}
         </Button>
       </motion.div>
     </div>
