@@ -80,41 +80,68 @@ const TwitterPage = () => {
     }
   };
 
+  const toggleAccount = (idx: number) => {
+    setSelectedAccounts(prev =>
+      prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx]
+    );
+  };
+
+  const selectAllAccounts = () => {
+    const verified = accounts.filter(a => a.verified).map(a => a.index);
+    if (selectedAccounts.length === verified.length) {
+      setSelectedAccounts([]);
+    } else {
+      setSelectedAccounts(verified);
+    }
+  };
+
   const handleUpload = async () => {
     if (!tweetText && !selectedFile) {
       toast.error("Add tweet text or select a video");
       return;
     }
+    if (selectedAccounts.length === 0) {
+      toast.error("Select at least one account");
+      return;
+    }
 
     setIsUploading(true);
-    const idx = parseInt(selectedAccount);
+    let filePath = '';
 
     try {
       if (selectedFile) {
         setUploadProgress("Uploading video to storage...");
-        const filePath = `x-uploads/${Date.now()}_${selectedFile.name}`;
+        filePath = `x-uploads/${Date.now()}_${selectedFile.name}`;
         const { error: uploadError } = await supabase.storage.from('videos').upload(filePath, selectedFile);
         if (uploadError) throw new Error(`Storage upload failed: ${uploadError.message}`);
+      }
 
-        setUploadProgress("Uploading to X (this may take a while)...");
-        const res = await uploadAndTweet(idx, filePath, tweetText);
-        if (res.success) {
-          toast.success("Video posted to X successfully!");
-          setTweetText("");
-          setSelectedFile(null);
-          if (fileInputRef.current) fileInputRef.current.value = "";
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const idx of selectedAccounts) {
+        const accLabel = accounts.find(a => a.index === idx)?.username || `Account ${idx + 1}`;
+        if (selectedFile) {
+          setUploadProgress(`Posting video to @${accLabel}...`);
+          const res = await uploadAndTweet(idx, filePath, tweetText);
+          if (res.success) successCount++;
+          else { failCount++; toast.error(`@${accLabel}: ${res.error || "Failed"}`); }
         } else {
-          toast.error(res.error || "Failed to post to X");
+          setUploadProgress(`Posting tweet to @${accLabel}...`);
+          const res = await tweetTextOnly(idx, tweetText);
+          if (res.success) successCount++;
+          else { failCount++; toast.error(`@${accLabel}: ${res.error || "Failed"}`); }
         }
-      } else {
-        setUploadProgress("Posting tweet...");
-        const res = await tweetTextOnly(idx, tweetText);
-        if (res.success) {
-          toast.success("Tweet posted!");
-          setTweetText("");
-        } else {
-          toast.error(res.error || "Failed to post tweet");
-        }
+      }
+
+      if (successCount > 0) {
+        toast.success(`Posted to ${successCount} account${successCount > 1 ? 's' : ''}!`);
+        setTweetText("");
+        setSelectedFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      }
+      if (failCount > 0 && successCount === 0) {
+        toast.error("All posts failed");
       }
     } catch (err: any) {
       toast.error(err.message || "Upload failed");
