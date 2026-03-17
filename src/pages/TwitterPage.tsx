@@ -236,7 +236,7 @@ const TwitterPage = () => {
                   <div key={acc.index} className={`p-3 rounded-lg border transition-colors cursor-pointer ${
                     selectedAccounts.includes(acc.index) ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30"
                   } ${!acc.verified && !acc.loading ? 'opacity-50' : ''}`}
-                    onClick={() => acc.verified && toggleAccount(acc.index)}>
+                    onClick={() => acc.verified && acc.index !== 0 && toggleAccount(acc.index)}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 flex-1 min-w-0">
                         <Checkbox
