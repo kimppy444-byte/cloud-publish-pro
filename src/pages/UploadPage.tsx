@@ -21,6 +21,7 @@ import VideoCommentManager from "@/components/VideoCommentManager";
 import TagSelector from "@/components/TagSelector";
 import { getStoredChannels, uploadVideoToYouTube, uploadThumbnail, getUploadDefaults } from "@/lib/youtube-direct";
 import { generateYouTubeSmartLink, generateFacebookSmartLink, translateText } from "@/lib/smart-link-api";
+import { suggestHashtags, improveDescription } from "@/lib/ai-suggest";
 
 interface UploadDestination {
   id: string;
