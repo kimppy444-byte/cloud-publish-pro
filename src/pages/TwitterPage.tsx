@@ -241,8 +241,8 @@ const TwitterPage = () => {
                       <div className="flex items-center gap-2 flex-1 min-w-0">
                         <Checkbox
                           checked={selectedAccounts.includes(acc.index)}
-                          onCheckedChange={() => acc.verified && toggleAccount(acc.index)}
-                          disabled={!acc.verified || acc.loading}
+                          onCheckedChange={() => acc.verified && acc.index !== 0 && toggleAccount(acc.index)}
+                          disabled={!acc.verified || acc.loading || acc.index === 0}
                           className="flex-shrink-0"
                         />
                         <div className="w-8 h-8 rounded-full bg-foreground text-background flex items-center justify-center text-xs font-bold flex-shrink-0">
