@@ -280,20 +280,13 @@ const TwitterPage = () => {
         className="bg-card rounded-xl shadow-card border border-border/50 p-6 space-y-5">
         <h2 className="font-display font-semibold text-foreground text-lg">Post to X</h2>
 
-        <div>
-          <label className="text-sm font-medium text-foreground block mb-1.5">Account</label>
-          <Select value={selectedAccount} onValueChange={setSelectedAccount}>
-            <SelectTrigger className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {accounts.map(acc => (
-                <SelectItem key={acc.index} value={acc.index.toString()}>
-                  Account {acc.index + 1} {acc.username ? `(@${acc.username})` : ''}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span>Posting to <strong className="text-foreground">{selectedAccounts.length}</strong> account{selectedAccounts.length !== 1 ? 's' : ''}</span>
+          {selectedAccounts.length > 0 && (
+            <span className="text-xs">
+              ({selectedAccounts.map(i => accounts.find(a => a.index === i)?.username ? `@${accounts.find(a => a.index === i)?.username}` : `#${i+1}`).join(', ')})
+            </span>
+          )}
         </div>
 
         <div>
