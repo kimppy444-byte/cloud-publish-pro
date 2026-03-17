@@ -407,7 +407,7 @@ const TwitterPage = () => {
 
         <Button
           onClick={handleUpload}
-          disabled={isUploading || (!tweetText && !selectedFile)}
+          disabled={isUploading || (!tweetText && !selectedFile) || selectedAccounts.length === 0}
           className="w-full bg-foreground text-background hover:bg-foreground/90"
         >
           {isUploading ? (
@@ -415,7 +415,7 @@ const TwitterPage = () => {
           ) : (
             <Send className="w-4 h-4 mr-2" />
           )}
-          {selectedFile ? "Upload & Tweet" : "Post Tweet"}
+          {selectedFile ? `Upload & Tweet to ${selectedAccounts.length} Account${selectedAccounts.length !== 1 ? 's' : ''}` : `Post to ${selectedAccounts.length} Account${selectedAccounts.length !== 1 ? 's' : ''}`}
         </Button>
       </motion.div>
     </div>
