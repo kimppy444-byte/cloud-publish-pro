@@ -112,7 +112,7 @@ const UploadPage = () => {
     if (!description) { toast.error("Enter a description first"); return; }
     setAiLoading('description');
     const res = await improveDescription(description, 'youtube');
-    if (res.success && res.data?.improved) {
+    if (res.success && (res.data?.description || res.data?.improved)) {
       setDescription(res.data.improved);
       toast.success("Description improved!");
     } else {
