@@ -52,7 +52,63 @@ const TwitterPage = () => {
 
   useEffect(() => {
     loadAccounts();
+    loadScheduledPosts();
   }, []);
+
+  const loadScheduledPosts = async () => {
+    setLoadingScheduled(true);
+    const { data } = await supabase
+      .from('scheduled_posts')
+      .select('*')
+      .order('scheduled_at', { ascending: true });
+    setScheduledPosts(data || []);
+    setLoadingScheduled(false);
+  };
+
+  const handleSchedulePost = async () => {
+    if (!tweetText && !selectedFile) { toast.error("Add tweet text or select a video"); return; }
+    if (selectedAccounts.length === 0) { toast.error("Select at least one account"); return; }
+    if (!scheduleDate) { toast.error("Pick a date"); return; }
+
+    const [hours, mins] = scheduleTime.split(':').map(Number);
+    const scheduledAt = new Date(scheduleDate);
+    scheduledAt.setHours(hours, mins, 0, 0);
+
+    if (scheduledAt <= new Date()) { toast.error("Scheduled time must be in the future"); return; }
+
+    let filePath = '';
+    if (selectedFile) {
+      toast.loading("Uploading video for scheduling...");
+      filePath = `x-uploads/${Date.now()}_${selectedFile.name}`;
+      const { error } = await supabase.storage.from('videos').upload(filePath, selectedFile);
+      toast.dismiss();
+      if (error) { toast.error(`Upload failed: ${error.message}`); return; }
+    }
+
+    const { error } = await supabase.from('scheduled_posts').insert({
+      platform: 'twitter',
+      account_indices: selectedAccounts,
+      tweet_text: tweetText || null,
+      video_path: filePath || null,
+      scheduled_at: scheduledAt.toISOString(),
+    });
+
+    if (error) { toast.error(`Failed to schedule: ${error.message}`); return; }
+
+    toast.success(`Scheduled for ${format(scheduledAt, "PPP 'at' p")}`);
+    setTweetText("");
+    setSelectedFile(null);
+    setScheduleDate(undefined);
+    setScheduleMode(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    loadScheduledPosts();
+  };
+
+  const deleteScheduledPost = async (id: string) => {
+    await supabase.from('scheduled_posts').delete().eq('id', id);
+    toast.success("Scheduled post deleted");
+    loadScheduledPosts();
+  };
 
   const loadAccounts = async () => {
     const res = await getXAccountCount();
