@@ -43,6 +43,13 @@ const TwitterPage = () => {
   const [suggestedTweets, setSuggestedTweets] = useState<string[]>([]);
   const [bestTimes, setBestTimes] = useState<any[]>([]);
 
+  // Schedule states
+  const [scheduleMode, setScheduleMode] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState<Date | undefined>(undefined);
+  const [scheduleTime, setScheduleTime] = useState("12:00");
+  const [scheduledPosts, setScheduledPosts] = useState<any[]>([]);
+  const [loadingScheduled, setLoadingScheduled] = useState(false);
+
   useEffect(() => {
     loadAccounts();
   }, []);
