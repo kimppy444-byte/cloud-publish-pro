@@ -1,9 +1,13 @@
 import { motion } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
-import { Upload, Loader2, CheckCircle2, XCircle, Video, RefreshCw, Send, Sparkles, Hash, Clock, Type } from "lucide-react";
+import { Upload, Loader2, CheckCircle2, XCircle, Video, RefreshCw, Send, Sparkles, Hash, Clock, Type, CalendarClock, Trash2 } from "lucide-react";
+import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { toast } from "sonner";
 import { getXAccountCount, verifyXAccount, uploadAndTweet, tweetTextOnly } from "@/lib/x-api";
 import { suggestHashtags, suggestTweet, suggestBestTimes } from "@/lib/ai-suggest";
@@ -39,9 +43,72 @@ const TwitterPage = () => {
   const [suggestedTweets, setSuggestedTweets] = useState<string[]>([]);
   const [bestTimes, setBestTimes] = useState<any[]>([]);
 
+  // Schedule states
+  const [scheduleMode, setScheduleMode] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState<Date | undefined>(undefined);
+  const [scheduleTime, setScheduleTime] = useState("12:00");
+  const [scheduledPosts, setScheduledPosts] = useState<any[]>([]);
+  const [loadingScheduled, setLoadingScheduled] = useState(false);
+
   useEffect(() => {
     loadAccounts();
+    loadScheduledPosts();
   }, []);
+
+  const loadScheduledPosts = async () => {
+    setLoadingScheduled(true);
+    const { data } = await supabase
+      .from('scheduled_posts')
+      .select('*')
+      .order('scheduled_at', { ascending: true });
+    setScheduledPosts(data || []);
+    setLoadingScheduled(false);
+  };
+
+  const handleSchedulePost = async () => {
+    if (!tweetText && !selectedFile) { toast.error("Add tweet text or select a video"); return; }
+    if (selectedAccounts.length === 0) { toast.error("Select at least one account"); return; }
+    if (!scheduleDate) { toast.error("Pick a date"); return; }
+
+    const [hours, mins] = scheduleTime.split(':').map(Number);
+    const scheduledAt = new Date(scheduleDate);
+    scheduledAt.setHours(hours, mins, 0, 0);
+
+    if (scheduledAt <= new Date()) { toast.error("Scheduled time must be in the future"); return; }
+
+    let filePath = '';
+    if (selectedFile) {
+      toast.loading("Uploading video for scheduling...");
+      filePath = `x-uploads/${Date.now()}_${selectedFile.name}`;
+      const { error } = await supabase.storage.from('videos').upload(filePath, selectedFile);
+      toast.dismiss();
+      if (error) { toast.error(`Upload failed: ${error.message}`); return; }
+    }
+
+    const { error } = await supabase.from('scheduled_posts').insert({
+      platform: 'twitter',
+      account_indices: selectedAccounts,
+      tweet_text: tweetText || null,
+      video_path: filePath || null,
+      scheduled_at: scheduledAt.toISOString(),
+    });
+
+    if (error) { toast.error(`Failed to schedule: ${error.message}`); return; }
+
+    toast.success(`Scheduled for ${format(scheduledAt, "PPP 'at' p")}`);
+    setTweetText("");
+    setSelectedFile(null);
+    setScheduleDate(undefined);
+    setScheduleMode(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    loadScheduledPosts();
+  };
+
+  const deleteScheduledPost = async (id: string) => {
+    await supabase.from('scheduled_posts').delete().eq('id', id);
+    toast.success("Scheduled post deleted");
+    loadScheduledPosts();
+  };
 
   const loadAccounts = async () => {
     const res = await getXAccountCount();
@@ -405,18 +472,122 @@ const TwitterPage = () => {
           </div>
         )}
 
-        <Button
-          onClick={handleUpload}
-          disabled={isUploading || (!tweetText && !selectedFile) || selectedAccounts.length === 0}
-          className="w-full bg-foreground text-background hover:bg-foreground/90"
-        >
-          {isUploading ? (
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+        {/* Schedule toggle */}
+        <div className="flex items-center gap-3 p-3 rounded-lg border border-border bg-background">
+          <Checkbox checked={scheduleMode} onCheckedChange={(c) => setScheduleMode(!!c)} />
+          <CalendarClock className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm text-foreground">Schedule for later</span>
+        </div>
+
+        {scheduleMode && (
+          <div className="flex flex-wrap items-end gap-3 p-3 rounded-lg border border-primary/20 bg-primary/5">
+            <div>
+              <label className="text-xs font-medium text-foreground block mb-1">Date</label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="w-[160px] justify-start text-left">
+                    {scheduleDate ? format(scheduleDate, "PPP") : "Pick date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={scheduleDate}
+                    onSelect={setScheduleDate}
+                    disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))}
+                    className="p-3 pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-foreground block mb-1">Time</label>
+              <Input type="time" value={scheduleTime} onChange={e => setScheduleTime(e.target.value)} className="w-[130px] h-9" />
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          <Button
+            onClick={scheduleMode ? handleSchedulePost : handleUpload}
+            disabled={isUploading || (!tweetText && !selectedFile) || selectedAccounts.length === 0}
+            className="flex-1 bg-foreground text-background hover:bg-foreground/90"
+          >
+            {isUploading ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : scheduleMode ? (
+              <CalendarClock className="w-4 h-4 mr-2" />
+            ) : (
+              <Send className="w-4 h-4 mr-2" />
+            )}
+            {scheduleMode
+              ? `Schedule to ${selectedAccounts.length} Account${selectedAccounts.length !== 1 ? 's' : ''}`
+              : selectedFile
+                ? `Upload & Tweet to ${selectedAccounts.length} Account${selectedAccounts.length !== 1 ? 's' : ''}`
+                : `Post to ${selectedAccounts.length} Account${selectedAccounts.length !== 1 ? 's' : ''}`}
+          </Button>
+        </div>
+      </motion.div>
+
+      {/* Scheduled Posts */}
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+        className="bg-card rounded-xl shadow-card border border-border/50">
+        <div className="p-5 border-b border-border flex items-center justify-between">
+          <h2 className="font-display font-semibold text-foreground text-lg flex items-center gap-2">
+            <CalendarClock className="w-5 h-5" /> Scheduled Posts
+          </h2>
+          <Button variant="outline" size="sm" onClick={loadScheduledPosts}>
+            <RefreshCw className="w-4 h-4 mr-1" /> Refresh
+          </Button>
+        </div>
+        <div className="p-4">
+          {loadingScheduled ? (
+            <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+          ) : scheduledPosts.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">No scheduled posts yet.</p>
           ) : (
-            <Send className="w-4 h-4 mr-2" />
+            <div className="space-y-3">
+              {scheduledPosts.map(post => (
+                <div key={post.id} className="flex items-start justify-between p-3 rounded-lg border border-border bg-background">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                        post.status === 'pending' ? 'bg-warning/10 text-warning' :
+                        post.status === 'completed' ? 'bg-success/10 text-success' :
+                        post.status === 'processing' ? 'bg-primary/10 text-primary' :
+                        'bg-destructive/10 text-destructive'
+                      }`}>
+                        {post.status}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {format(new Date(post.scheduled_at), "PPP 'at' p")}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        → {(post.account_indices || []).length} account{(post.account_indices || []).length !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                    {post.tweet_text && <p className="text-sm text-foreground truncate">{post.tweet_text}</p>}
+                    {post.video_path && <p className="text-xs text-muted-foreground">📹 Video attached</p>}
+                    {post.results && (
+                      <div className="mt-1 space-y-0.5">
+                        {(post.results as any[]).map((r: any, i: number) => (
+                          <p key={i} className={`text-xs ${r.success ? 'text-success' : 'text-destructive'}`}>
+                            Account {(r.accountIndex || 0) + 1}: {r.success ? '✓ Posted' : `✗ ${r.error}`}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {post.status === 'pending' && (
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => deleteScheduledPost(post.id)}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
           )}
-          {selectedFile ? `Upload & Tweet to ${selectedAccounts.length} Account${selectedAccounts.length !== 1 ? 's' : ''}` : `Post to ${selectedAccounts.length} Account${selectedAccounts.length !== 1 ? 's' : ''}`}
-        </Button>
+        </div>
       </motion.div>
     </div>
   );

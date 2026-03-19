@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      scheduled_posts: {
+        Row: {
+          account_indices: number[]
+          created_at: string
+          id: string
+          platform: string
+          results: Json | null
+          scheduled_at: string
+          status: string
+          tweet_text: string | null
+          video_path: string | null
+        }
+        Insert: {
+          account_indices?: number[]
+          created_at?: string
+          id?: string
+          platform?: string
+          results?: Json | null
+          scheduled_at: string
+          status?: string
+          tweet_text?: string | null
+          video_path?: string | null
+        }
+        Update: {
+          account_indices?: number[]
+          created_at?: string
+          id?: string
+          platform?: string
+          results?: Json | null
+          scheduled_at?: string
+          status?: string
+          tweet_text?: string | null
+          video_path?: string | null
+        }
+        Relationships: []
+      }
       short_urls: {
         Row: {
           click_count: number | null
