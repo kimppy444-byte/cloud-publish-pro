@@ -94,7 +94,7 @@ const AppSidebar = () => {
                 exit={{ opacity: 0 }}
                 className="font-display font-bold text-foreground text-lg whitespace-nowrap"
               >
-                MediaHub
+                COMBO_WICK
               </motion.span>
             )}
           </AnimatePresence>
