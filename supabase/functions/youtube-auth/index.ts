@@ -49,14 +49,30 @@ serve(async (req) => {
     const YOUTUBE_API_KEY = Deno.env.get('YOUTUBE_API_KEY');
     const GRAPH_API = 'https://graph.facebook.com/v19.0';
 
+    // Parse GOOGLE_CLIENT_PAIRS: "clientId1:secret1|clientId2:secret2|..."
+    const clientPairsRaw = Deno.env.get('GOOGLE_CLIENT_PAIRS') || '';
+    const clientPairsMap = new Map<string, string>();
+    if (clientPairsRaw) {
+      for (const pair of clientPairsRaw.split('|')) {
+        const colonIdx = pair.indexOf(':');
+        if (colonIdx > 0) {
+          clientPairsMap.set(pair.substring(0, colonIdx).trim(), pair.substring(colonIdx + 1).trim());
+        }
+      }
+    }
+    // Always include the default pair
+    if (DEFAULT_CLIENT_ID && DEFAULT_CLIENT_SECRET) {
+      clientPairsMap.set(DEFAULT_CLIENT_ID, DEFAULT_CLIENT_SECRET);
+    }
+
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const body = await req.json();
     const { action, code, redirectUri, channelTokenId, videoId, title, description, privacyStatus,
       igAccountId, pageAccessToken, commentId, message, query: searchQuery, clientId: customClientId } = body;
 
-    // Allow overriding the client ID from the request (for multi-client support)
+    // Resolve client ID and its matching secret
     const GOOGLE_CLIENT_ID = customClientId || DEFAULT_CLIENT_ID;
-    const GOOGLE_CLIENT_SECRET = DEFAULT_CLIENT_SECRET;
+    const GOOGLE_CLIENT_SECRET = clientPairsMap.get(GOOGLE_CLIENT_ID) || DEFAULT_CLIENT_SECRET;
 
     if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
       return err('Google OAuth credentials not configured');
