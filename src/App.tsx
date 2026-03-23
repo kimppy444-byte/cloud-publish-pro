@@ -16,6 +16,7 @@ import YouTubeCallbackPage from "./pages/YouTubeCallbackPage";
 import MyVideosPage from "./pages/MyVideosPage";
 import IgAutoReplyPage from "./pages/IgAutoReplyPage";
 import TwitterPage from "./pages/TwitterPage";
+import ThreadsPage from "./pages/ThreadsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,7 +38,8 @@ const App = () => (
                 <Route path="/social" element={<SocialPage />} />
                 <Route path="/my-videos" element={<MyVideosPage />} />
                 <Route path="/ig-auto-reply" element={<IgAutoReplyPage />} />
-                <Route path="/twitter" element={<TwitterPage />} />
+              <Route path="/twitter" element={<TwitterPage />} />
+              <Route path="/threads" element={<ThreadsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
               </Route>
               <Route path="/youtube-callback" element={<YouTubeCallbackPage />} />
