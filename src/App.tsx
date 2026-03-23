@@ -16,6 +16,7 @@ import YouTubeCallbackPage from "./pages/YouTubeCallbackPage";
 import MyVideosPage from "./pages/MyVideosPage";
 import IgAutoReplyPage from "./pages/IgAutoReplyPage";
 import TwitterPage from "./pages/TwitterPage";
+import ThreadsPage from "./pages/ThreadsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
