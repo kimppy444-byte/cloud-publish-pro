@@ -46,6 +46,7 @@ const navGroups = [
       { to: "/social", icon: Facebook, label: "Facebook & IG" },
       { to: "/ig-auto-reply", icon: Instagram, label: "IG Auto-Reply" },
       { to: "/twitter", icon: XIcon, label: "X (Twitter)" },
+      { to: "/threads", icon: AtSign, label: "Threads" },
     ],
   },
   {
