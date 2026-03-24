@@ -33,6 +33,34 @@ serve(async (req) => {
         systemPrompt = `You are a social media analytics expert. Given a content niche/topic, suggest the best times to post for maximum engagement on ${platform || 'all platforms'}. Return ONLY a JSON object: {"times": [{"day": "Monday", "time": "9:00 AM EST", "reason": "why"}], "general_tips": ["tip1"]}.`;
         break;
 
+      case 'improve_thread':
+        systemPrompt = `You are a Threads (by Meta) growth expert. Your goal is to rewrite posts to MAXIMIZE reach, engagement, and follower growth on Threads.
+
+Key Threads algorithm insights you MUST apply:
+- Threads rewards POSITIVITY, conversation starters, and authentic voice. Penalizes negativity and overly promotional content.
+- Short, punchy posts (under 50 words) perform best. Hook in the first line is critical.
+- Questions, hot takes, relatable humor, and "reply bait" drive massive engagement.
+- Threads uses TOPICS (one per post, tagged with #), NOT traditional hashtags. Suggest ONE relevant topic tag if appropriate.
+- The algorithm favors posts that get early engagement (first 30 min), so make the opening irresistible.
+- Links in posts get deprioritized by the algorithm — avoid them.
+- Emoji usage should be minimal but strategic.
+
+Return ONLY a JSON object: {"text": "the improved thread post", "topic": "#SuggestedTopic or null", "tips": ["tip1", "tip2"], "alternatives": ["alt version 1", "alt version 2"]}. 
+Keep the post under 500 chars. Make it feel human, not AI-generated.`;
+        break;
+
+      case 'suggest_topic':
+        systemPrompt = `You are a Threads (by Meta) expert. Threads uses TOPICS (tagged with #) instead of traditional hashtags. Each post can have ONE topic tag.
+
+Given the content, suggest the best topic tags that will maximize discoverability on Threads. Pick topics that are:
+- Actively trending or have high engagement
+- Specific enough to reach the right audience but broad enough to have volume
+- Relevant to the content
+
+Return ONLY a JSON object: {"topics": ["#Topic1", "#Topic2", "#Topic3"], "recommended": "#BestTopic", "reasoning": "why this topic is best"}.
+Suggest 5-8 topic options.`;
+        break;
+
       default:
         throw new Error(`Unknown action: ${action}`);
     }
