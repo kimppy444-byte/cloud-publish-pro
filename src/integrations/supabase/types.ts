@@ -74,6 +74,54 @@ export type Database = {
         }
         Relationships: []
       }
+      threads_auto_posts: {
+        Row: {
+          created_at: string
+          current_count: number
+          id: string
+          interval_hours: number
+          last_result: Json | null
+          max_posts: number
+          media_type: string
+          media_url: string | null
+          next_post_at: string
+          posts_per_interval: number
+          status: string
+          text: string
+          topic: string | null
+        }
+        Insert: {
+          created_at?: string
+          current_count?: number
+          id?: string
+          interval_hours?: number
+          last_result?: Json | null
+          max_posts?: number
+          media_type?: string
+          media_url?: string | null
+          next_post_at?: string
+          posts_per_interval?: number
+          status?: string
+          text: string
+          topic?: string | null
+        }
+        Update: {
+          created_at?: string
+          current_count?: number
+          id?: string
+          interval_hours?: number
+          last_result?: Json | null
+          max_posts?: number
+          media_type?: string
+          media_url?: string | null
+          next_post_at?: string
+          posts_per_interval?: number
+          status?: string
+          text?: string
+          topic?: string | null
+        }
+        Relationships: []
+      }
       youtube_tokens: {
         Row: {
           access_token: string
