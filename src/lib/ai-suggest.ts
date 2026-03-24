@@ -40,3 +40,11 @@ export async function suggestTweet(content: string) {
 export async function suggestBestTimes(content: string, platform?: string) {
   return callAiSuggest({ action: 'best_posting_times', content, platform });
 }
+
+export async function improveThread(content: string) {
+  return callAiSuggest({ action: 'improve_thread', content, platform: 'threads' });
+}
+
+export async function suggestTopic(content: string) {
+  return callAiSuggest({ action: 'suggest_topic', content, platform: 'threads' });
+}
