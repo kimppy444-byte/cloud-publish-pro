@@ -14,6 +14,7 @@ import {
   Sun,
   Moon,
   AtSign,
+  CalendarClock,
 } from "lucide-react";
 
 const XIcon = (props: any) => (
