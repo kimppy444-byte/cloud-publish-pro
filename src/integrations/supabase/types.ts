@@ -14,6 +14,66 @@ export type Database = {
   }
   public: {
     Tables: {
+      facebook_auto_posts: {
+        Row: {
+          created_at: string
+          current_count: number
+          description: string
+          hashtags: string | null
+          id: string
+          interval_hours: number
+          last_result: Json | null
+          max_posts: number
+          next_post_at: string
+          page_access_token: string
+          page_id: string
+          page_name: string | null
+          post_type: string
+          posts_per_interval: number
+          status: string
+          title: string | null
+          video_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          current_count?: number
+          description: string
+          hashtags?: string | null
+          id?: string
+          interval_hours?: number
+          last_result?: Json | null
+          max_posts?: number
+          next_post_at?: string
+          page_access_token: string
+          page_id: string
+          page_name?: string | null
+          post_type?: string
+          posts_per_interval?: number
+          status?: string
+          title?: string | null
+          video_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          current_count?: number
+          description?: string
+          hashtags?: string | null
+          id?: string
+          interval_hours?: number
+          last_result?: Json | null
+          max_posts?: number
+          next_post_at?: string
+          page_access_token?: string
+          page_id?: string
+          page_name?: string | null
+          post_type?: string
+          posts_per_interval?: number
+          status?: string
+          title?: string | null
+          video_url?: string | null
+        }
+        Relationships: []
+      }
       scheduled_posts: {
         Row: {
           account_indices: number[]

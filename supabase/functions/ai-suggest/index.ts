@@ -61,6 +61,42 @@ Return ONLY a JSON object: {"topics": ["#Topic1", "#Topic2", "#Topic3"], "recomm
 Suggest 5-8 topic options.`;
         break;
 
+      case 'improve_facebook':
+        systemPrompt = `You are a Facebook growth expert with deep knowledge of the 2025/2026 algorithm. Your goal is to rewrite posts to MAXIMIZE reach, engagement, and follower growth on Facebook.
+
+Key Facebook algorithm insights you MUST apply:
+- Facebook is Reels-first, Groups-powered, and RUTHLESSLY link-penalized. 98% of viewed posts contain NO external links.
+- Reels get 135% more reach than photos. Native video gets 478% more shares than shared links.
+- First-hour engagement determines 80% of viral potential — make the opening IRRESISTIBLE.
+- The algorithm prioritizes "meaningful interactions": comments, shares, saves, multi-thread discussions.
+- Hollow engagement (passive likes, repetitive shares) is DEVALUED. Content needs real conversation.
+- 30% of feeds are AI-recommended "unconnected content" — quality signals reach people who don't follow you.
+- Use 2-5 hashtags MAX. More than 7 triggers a 27% reach reduction (spam penalty).
+- Keep text short and punchy. Ask questions, use hot takes, create "reply bait."
+- 85% watch videos without sound — mention captions in description if it's a video.
+- Wednesday 8-11 AM and 7-9 AM / 6-9 PM are peak engagement windows.
+- Avoid external links in posts. Put links in comments if needed.
+- Emotional, relatable, or surprising content drives shares.
+
+Return ONLY a JSON object: {"description": "the improved post text", "hashtags": ["#tag1", "#tag2"], "tips": ["tip1", "tip2"], "alternatives": ["alt version 1", "alt version 2"]}.
+Keep the post native-feeling, human, and under 500 chars. NO external links.`;
+        break;
+
+      case 'suggest_facebook_hashtags':
+        systemPrompt = `You are a Facebook hashtag strategy expert. Facebook's algorithm PENALIZES hashtag overuse.
+
+Key rules:
+- Optimal count: 2-5 hashtags per post. 27% reach REDUCTION when exceeding 7 tags.
+- Mix branded hashtags with trending/niche ones.
+- Use "conversation catalyst" hashtags that encourage discussion.
+- Align with search intent — Facebook hashtags now work like keywords.
+- Avoid generic spam hashtags like #love #instagood (wrong platform anyway).
+- Community-specific hashtags outperform generic ones.
+
+Return ONLY a JSON object: {"hashtags": ["#tag1", "#tag2", "#tag3", "#tag4", "#tag5"], "reasoning": "why these hashtags", "avoid": ["#badtag1"]}.
+Suggest exactly 5 high-impact hashtags.`;
+        break;
+
       default:
         throw new Error(`Unknown action: ${action}`);
     }

@@ -14,6 +14,7 @@ import {
   Sun,
   Moon,
   AtSign,
+  CalendarClock,
 } from "lucide-react";
 
 const XIcon = (props: any) => (
@@ -44,6 +45,7 @@ const navGroups = [
     label: "Social",
     items: [
       { to: "/social", icon: Facebook, label: "Facebook & IG" },
+      { to: "/fb-auto-post", icon: CalendarClock, label: "FB Auto-Post" },
       { to: "/ig-auto-reply", icon: Instagram, label: "IG Auto-Reply" },
       { to: "/twitter", icon: XIcon, label: "X (Twitter)" },
       { to: "/threads", icon: AtSign, label: "Threads" },

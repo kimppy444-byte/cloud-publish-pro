@@ -48,3 +48,11 @@ export async function improveThread(content: string) {
 export async function suggestTopic(content: string) {
   return callAiSuggest({ action: 'suggest_topic', content, platform: 'threads' });
 }
+
+export async function improveFacebookPost(content: string) {
+  return callAiSuggest({ action: 'improve_facebook', content, platform: 'facebook' });
+}
+
+export async function suggestFacebookHashtags(content: string) {
+  return callAiSuggest({ action: 'suggest_facebook_hashtags', content, platform: 'facebook' });
+}

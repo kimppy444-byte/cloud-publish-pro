@@ -17,6 +17,7 @@ import MyVideosPage from "./pages/MyVideosPage";
 import IgAutoReplyPage from "./pages/IgAutoReplyPage";
 import TwitterPage from "./pages/TwitterPage";
 import ThreadsPage from "./pages/ThreadsPage";
+import FacebookAutoPostPage from "./pages/FacebookAutoPostPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,6 +41,7 @@ const App = () => (
                 <Route path="/ig-auto-reply" element={<IgAutoReplyPage />} />
               <Route path="/twitter" element={<TwitterPage />} />
               <Route path="/threads" element={<ThreadsPage />} />
+              <Route path="/fb-auto-post" element={<FacebookAutoPostPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
               </Route>
               <Route path="/youtube-callback" element={<YouTubeCallbackPage />} />
