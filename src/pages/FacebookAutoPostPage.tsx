@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
-import { Facebook, Loader2, CalendarClock, Trash2, Play, Pause, Sparkles, Hash, Clock, Video, FileText, RefreshCw } from "lucide-react";
+import { Facebook, Loader2, CalendarClock, Trash2, Play, Pause, Sparkles, Hash, Clock, Video, FileText, RefreshCw, Database, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { getFacebookPages } from "@/lib/facebook-api";
 import { improveFacebookPost, suggestFacebookHashtags, suggestBestTimes } from "@/lib/ai-suggest";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchScripts, type Script } from "@/lib/scripts-api";
 
 interface FbPage {
   id: string;
@@ -40,6 +41,11 @@ const FacebookAutoPostPage = () => {
 
   // Existing auto-posts
   const [autoPosts, setAutoPosts] = useState<any[]>([]);
+
+  // Scripts
+  const [scripts, setScripts] = useState<Script[]>([]);
+  const [loadingScripts, setLoadingScripts] = useState(false);
+  const [showScripts, setShowScripts] = useState(false);
 
   useEffect(() => {
     loadPages();
@@ -148,6 +154,28 @@ const FacebookAutoPostPage = () => {
     toast.success("Hashtags applied!");
   };
 
+  const loadScripts = async () => {
+    setLoadingScripts(true);
+    try {
+      const res = await fetchScripts({ limit: 20 });
+      setScripts(res.data);
+    } catch (err: any) {
+      toast.error("Failed to load scripts: " + err.message);
+    }
+    setLoadingScripts(false);
+  };
+
+  const useScript = (script: Script) => {
+    setDescription(`🎮 ${script.title}\n\n${script.description}\n\nGame: ${script.game_name}`);
+    if (script.github_video_url) {
+      setVideoUrl(script.github_video_url);
+      setPostType("video");
+    }
+    setHashtags(`#${script.game_name.replace(/\s+/g, '')} #roblox #gaming #scripts`);
+    setShowScripts(false);
+    toast.success(`Loaded script: ${script.title}`);
+  };
+
   if (loadingPages) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -200,6 +228,32 @@ const FacebookAutoPostPage = () => {
             </h2>
 
             <div className="space-y-3">
+              {/* Load from Scripts API */}
+              <div>
+                <Button variant="outline" size="sm" onClick={() => { setShowScripts(!showScripts); if (!showScripts && scripts.length === 0) loadScripts(); }}>
+                  <Database className="w-4 h-4 mr-1" />
+                  Load from Scripts
+                  <ChevronDown className={`w-3 h-3 ml-1 transition-transform ${showScripts ? 'rotate-180' : ''}`} />
+                </Button>
+                {showScripts && (
+                  <div className="mt-2 max-h-48 overflow-y-auto border border-border rounded-lg bg-background">
+                    {loadingScripts ? (
+                      <div className="p-4 text-center"><Loader2 className="w-4 h-4 animate-spin mx-auto" /></div>
+                    ) : scripts.length === 0 ? (
+                      <p className="p-4 text-xs text-muted-foreground text-center">No scripts found</p>
+                    ) : (
+                      scripts.map(s => (
+                        <button key={s.id} onClick={() => useScript(s)}
+                          className="w-full text-left px-3 py-2 hover:bg-muted/50 border-b border-border last:border-0 transition-colors">
+                          <p className="text-sm font-medium text-foreground">{s.title}</p>
+                          <p className="text-xs text-muted-foreground truncate">{s.game_name} · {s.likes_count} likes · {s.downloads_count} downloads</p>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+
               {/* Post type */}
               <div className="flex gap-2">
                 <Button variant={postType === "text" ? "default" : "outline"} size="sm" onClick={() => setPostType("text")}>
@@ -217,7 +271,7 @@ const FacebookAutoPostPage = () => {
                 </>
               )}
 
-              <Textarea placeholder="Post description / text — make it native, no external links!" value={description} onChange={e => setDescription(e.target.value)} rows={4} />
+              <Textarea placeholder="Post description / text — AI will generate unique variations for each interval!" value={description} onChange={e => setDescription(e.target.value)} rows={4} />
               
               <Input placeholder="Hashtags (2-5 recommended, e.g. #gaming #viral)" value={hashtags} onChange={e => setHashtags(e.target.value)} />
 
@@ -304,7 +358,7 @@ const FacebookAutoPostPage = () => {
               </div>
 
               <p className="text-xs text-muted-foreground">
-                Will post {postsPerInterval} time(s) every {interval}h, up to {maxPosts} intervals. Each interval counts as 1/{maxPosts}.
+                Will post {postsPerInterval} time(s) every {interval}h, up to {maxPosts} intervals. Each interval counts as 1/{maxPosts}. <span className="text-primary font-medium">✨ AI generates unique text for every post!</span>
               </p>
 
               <Button onClick={handleCreate} disabled={creating || !description.trim()}>

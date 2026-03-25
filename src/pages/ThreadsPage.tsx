@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
-import { Send, Loader2, RefreshCw, Image, Video, ExternalLink, Sparkles, Hash, Clock, CalendarClock, Trash2, Play, Pause, CheckCircle2 } from "lucide-react";
+import { Send, Loader2, RefreshCw, Image, Video, ExternalLink, Sparkles, Hash, Clock, CalendarClock, Trash2, Play, Pause, CheckCircle2, Database, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { getThreadsProfile, getThreads, postThreadText, postThreadImage, postThreadVideo } from "@/lib/threads-api";
 import { improveThread, suggestTopic, suggestBestTimes } from "@/lib/ai-suggest";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchScripts, type Script } from "@/lib/scripts-api";
 
 const ThreadsIcon = (props: any) => (
   <svg viewBox="0 0 192 192" className={props.className || "w-5 h-5"} fill="currentColor">
@@ -39,6 +40,11 @@ const ThreadsPage = () => {
   const [autoPostsPerInterval, setAutoPostsPerInterval] = useState(1);
   const [autoMaxPosts, setAutoMaxPosts] = useState(5);
   const [creatingAuto, setCreatingAuto] = useState(false);
+
+  // Scripts
+  const [scripts, setScripts] = useState<Script[]>([]);
+  const [loadingScripts, setLoadingScripts] = useState(false);
+  const [showScripts, setShowScripts] = useState(false);
 
   useEffect(() => {
     loadProfile();
@@ -158,6 +164,28 @@ const ThreadsPage = () => {
     await supabase.from('threads_auto_posts').delete().eq('id', id);
     toast.success("Auto-post deleted");
     loadAutoPosts();
+  };
+
+  const loadScripts = async () => {
+    setLoadingScripts(true);
+    try {
+      const res = await fetchScripts({ limit: 20 });
+      setScripts(res.data);
+    } catch (err: any) {
+      toast.error("Failed to load scripts: " + err.message);
+    }
+    setLoadingScripts(false);
+  };
+
+  const useScript = (script: Script) => {
+    setAutoText(`🎮 ${script.title}\n\n${script.description}\n\nGame: ${script.game_name}`);
+    setAutoTopic(`#${script.game_name.replace(/\s+/g, '')}`);
+    if (script.github_video_url) {
+      setAutoMediaUrl(script.github_video_url);
+      setAutoMediaType("VIDEO");
+    }
+    setShowScripts(false);
+    toast.success(`Loaded script: ${script.title}`);
   };
 
   return (
@@ -282,7 +310,33 @@ const ThreadsPage = () => {
         </h2>
 
         <div className="space-y-3">
-          <Textarea placeholder="Post text (will be posted automatically at each interval)" value={autoText} onChange={e => setAutoText(e.target.value)} rows={3} maxLength={500} />
+          {/* Load from Scripts API */}
+          <div>
+            <Button variant="outline" size="sm" onClick={() => { setShowScripts(!showScripts); if (!showScripts && scripts.length === 0) loadScripts(); }}>
+              <Database className="w-4 h-4 mr-1" />
+              Load from Scripts
+              <ChevronDown className={`w-3 h-3 ml-1 transition-transform ${showScripts ? 'rotate-180' : ''}`} />
+            </Button>
+            {showScripts && (
+              <div className="mt-2 max-h-48 overflow-y-auto border border-border rounded-lg bg-background">
+                {loadingScripts ? (
+                  <div className="p-4 text-center"><Loader2 className="w-4 h-4 animate-spin mx-auto" /></div>
+                ) : scripts.length === 0 ? (
+                  <p className="p-4 text-xs text-muted-foreground text-center">No scripts found</p>
+                ) : (
+                  scripts.map(s => (
+                    <button key={s.id} onClick={() => useScript(s)}
+                      className="w-full text-left px-3 py-2 hover:bg-muted/50 border-b border-border last:border-0 transition-colors">
+                      <p className="text-sm font-medium text-foreground">{s.title}</p>
+                      <p className="text-xs text-muted-foreground truncate">{s.game_name} · {s.likes_count} likes · {s.downloads_count} downloads</p>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+
+          <Textarea placeholder="Base text — AI will generate unique variations for each interval!" value={autoText} onChange={e => setAutoText(e.target.value)} rows={3} maxLength={500} />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-medium text-foreground mb-1 block">Topic Tag (optional)</label>
@@ -320,7 +374,7 @@ const ThreadsPage = () => {
           </div>
 
           <p className="text-xs text-muted-foreground">
-            Will post {autoPostsPerInterval} thread(s) every {autoInterval}h, up to {autoMaxPosts} intervals. Each interval counts as 1/{autoMaxPosts}.
+            Will post {autoPostsPerInterval} thread(s) every {autoInterval}h, up to {autoMaxPosts} intervals. Each interval counts as 1/{autoMaxPosts}. <span className="text-primary font-medium">✨ AI generates unique text for every post!</span>
           </p>
 
           <Button onClick={handleCreateAutoPost} disabled={creatingAuto || !autoText.trim()}>
