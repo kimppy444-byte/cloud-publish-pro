@@ -41,6 +41,7 @@ const App = () => (
                 <Route path="/ig-auto-reply" element={<IgAutoReplyPage />} />
               <Route path="/twitter" element={<TwitterPage />} />
               <Route path="/threads" element={<ThreadsPage />} />
+              <Route path="/fb-auto-post" element={<FacebookAutoPostPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
               </Route>
               <Route path="/youtube-callback" element={<YouTubeCallbackPage />} />
