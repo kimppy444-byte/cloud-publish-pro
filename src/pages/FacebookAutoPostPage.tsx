@@ -228,6 +228,32 @@ const FacebookAutoPostPage = () => {
             </h2>
 
             <div className="space-y-3">
+              {/* Load from Scripts API */}
+              <div>
+                <Button variant="outline" size="sm" onClick={() => { setShowScripts(!showScripts); if (!showScripts && scripts.length === 0) loadScripts(); }}>
+                  <Database className="w-4 h-4 mr-1" />
+                  Load from Scripts
+                  <ChevronDown className={`w-3 h-3 ml-1 transition-transform ${showScripts ? 'rotate-180' : ''}`} />
+                </Button>
+                {showScripts && (
+                  <div className="mt-2 max-h-48 overflow-y-auto border border-border rounded-lg bg-background">
+                    {loadingScripts ? (
+                      <div className="p-4 text-center"><Loader2 className="w-4 h-4 animate-spin mx-auto" /></div>
+                    ) : scripts.length === 0 ? (
+                      <p className="p-4 text-xs text-muted-foreground text-center">No scripts found</p>
+                    ) : (
+                      scripts.map(s => (
+                        <button key={s.id} onClick={() => useScript(s)}
+                          className="w-full text-left px-3 py-2 hover:bg-muted/50 border-b border-border last:border-0 transition-colors">
+                          <p className="text-sm font-medium text-foreground">{s.title}</p>
+                          <p className="text-xs text-muted-foreground truncate">{s.game_name} · {s.likes_count} likes · {s.downloads_count} downloads</p>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+
               {/* Post type */}
               <div className="flex gap-2">
                 <Button variant={postType === "text" ? "default" : "outline"} size="sm" onClick={() => setPostType("text")}>
@@ -245,7 +271,7 @@ const FacebookAutoPostPage = () => {
                 </>
               )}
 
-              <Textarea placeholder="Post description / text — make it native, no external links!" value={description} onChange={e => setDescription(e.target.value)} rows={4} />
+              <Textarea placeholder="Post description / text — AI will generate unique variations for each interval!" value={description} onChange={e => setDescription(e.target.value)} rows={4} />
               
               <Input placeholder="Hashtags (2-5 recommended, e.g. #gaming #viral)" value={hashtags} onChange={e => setHashtags(e.target.value)} />
 
