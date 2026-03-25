@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
-import { Facebook, Loader2, CalendarClock, Trash2, Play, Pause, Sparkles, Hash, Clock, Video, FileText, RefreshCw } from "lucide-react";
+import { Facebook, Loader2, CalendarClock, Trash2, Play, Pause, Sparkles, Hash, Clock, Video, FileText, RefreshCw, Database, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { getFacebookPages } from "@/lib/facebook-api";
 import { improveFacebookPost, suggestFacebookHashtags, suggestBestTimes } from "@/lib/ai-suggest";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchScripts, type Script } from "@/lib/scripts-api";
 
 interface FbPage {
   id: string;
