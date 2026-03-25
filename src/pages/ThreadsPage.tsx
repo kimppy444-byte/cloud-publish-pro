@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
-import { Send, Loader2, RefreshCw, Image, Video, ExternalLink, Sparkles, Hash, Clock, CalendarClock, Trash2, Play, Pause, CheckCircle2 } from "lucide-react";
+import { Send, Loader2, RefreshCw, Image, Video, ExternalLink, Sparkles, Hash, Clock, CalendarClock, Trash2, Play, Pause, CheckCircle2, Database, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { getThreadsProfile, getThreads, postThreadText, postThreadImage, postThreadVideo } from "@/lib/threads-api";
 import { improveThread, suggestTopic, suggestBestTimes } from "@/lib/ai-suggest";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchScripts, type Script } from "@/lib/scripts-api";
 
 const ThreadsIcon = (props: any) => (
   <svg viewBox="0 0 192 192" className={props.className || "w-5 h-5"} fill="currentColor">
