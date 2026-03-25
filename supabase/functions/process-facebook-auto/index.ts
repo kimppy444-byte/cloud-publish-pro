@@ -8,6 +8,58 @@ const corsHeaders = {
 
 const GRAPH_API = 'https://graph.facebook.com/v19.0';
 
+async function generateVariation(originalText: string, hashtags: string | null, platform: string, postNumber: number, maxPosts: number, apiKey: string): Promise<{ text: string; hashtags: string }> {
+  try {
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          {
+            role: "system",
+            content: `You are a Facebook growth expert. Rewrite the following post to create a UNIQUE variation while keeping the same core message/theme. This is post ${postNumber}/${maxPosts} in an automated series.
+
+Rules for Facebook algorithm optimization:
+- Keep the same topic/message but use completely different wording, angle, or hook
+- NO external links — Facebook penalizes them (98% of viewed posts have no links)
+- Use 2-5 hashtags MAX (more than 7 causes 27% reach drop)
+- Make it feel native, human, and conversation-starting
+- Use questions, hot takes, relatable humor, or "reply bait" to drive comments
+- Keep it under 500 chars
+- Each variation should have a different opening hook
+- Return ONLY a JSON object: {"text": "the post text", "hashtags": "#tag1 #tag2 #tag3"}
+- Do NOT include hashtags in the text field — put them separately`
+          },
+          { role: "user", content: `Original post: ${originalText}\nOriginal hashtags: ${hashtags || 'none'}` }
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn(`AI variation failed (${response.status}), using original text`);
+      return { text: originalText, hashtags: hashtags || '' };
+    }
+
+    const data = await response.json();
+    const rawContent = data.choices?.[0]?.message?.content?.trim() || '';
+    
+    try {
+      const cleaned = rawContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      const parsed = JSON.parse(cleaned);
+      return { text: parsed.text || originalText, hashtags: parsed.hashtags || hashtags || '' };
+    } catch {
+      return { text: rawContent || originalText, hashtags: hashtags || '' };
+    }
+  } catch (err) {
+    console.warn('AI variation error, using original:', err);
+    return { text: originalText, hashtags: hashtags || '' };
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -16,9 +68,9 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get all active auto posts that are due
     const { data: duePosts, error: fetchError } = await supabase
       .from('facebook_auto_posts')
       .select('*')
@@ -39,21 +91,37 @@ serve(async (req) => {
         const postResults: any[] = [];
 
         for (let p = 0; p < post.posts_per_interval; p++) {
-          let descriptionWithHashtags = post.description;
-          if (post.hashtags) {
-            descriptionWithHashtags += '\n\n' + post.hashtags;
+          // Generate unique AI variation
+          let finalText: string;
+          let finalHashtags: string;
+
+          if (lovableApiKey) {
+            const variation = await generateVariation(
+              post.description,
+              post.hashtags,
+              'facebook',
+              post.current_count + 1,
+              post.max_posts,
+              lovableApiKey
+            );
+            finalText = variation.text;
+            finalHashtags = variation.hashtags;
+          } else {
+            finalText = post.description;
+            finalHashtags = post.hashtags || '';
           }
+
+          const fullMessage = finalHashtags ? `${finalText}\n\n${finalHashtags}` : finalText;
 
           let result: any;
 
           if (post.post_type === 'video' && post.video_url) {
-            // Publish video to Facebook page
             const params = new URLSearchParams({
               file_url: post.video_url,
               access_token: post.page_access_token,
             });
             if (post.title) params.set('title', post.title);
-            if (descriptionWithHashtags) params.set('description', descriptionWithHashtags);
+            if (fullMessage) params.set('description', fullMessage);
 
             const res = await fetch(`${GRAPH_API}/${post.page_id}/videos`, {
               method: 'POST',
@@ -62,9 +130,8 @@ serve(async (req) => {
             result = await res.json();
             if (!res.ok) throw new Error(`Facebook video error [${res.status}]: ${JSON.stringify(result)}`);
           } else {
-            // Publish text/link post to Facebook page
             const params = new URLSearchParams({
-              message: descriptionWithHashtags,
+              message: fullMessage,
               access_token: post.page_access_token,
             });
 
@@ -76,11 +143,10 @@ serve(async (req) => {
             if (!res.ok) throw new Error(`Facebook post error [${res.status}]: ${JSON.stringify(result)}`);
           }
 
-          postResults.push(result);
+          postResults.push({ ...result, posted_text: fullMessage });
           console.log(`Posted ${p + 1}/${post.posts_per_interval} for fb auto-post ${post.id}`);
         }
 
-        // Increment counter by 1 (not by posts_per_interval)
         const newCount = post.current_count + 1;
         const nextPostAt = new Date(Date.now() + post.interval_hours * 60 * 60 * 1000);
 
