@@ -358,7 +358,7 @@ const FacebookAutoPostPage = () => {
               </div>
 
               <p className="text-xs text-muted-foreground">
-                Will post {postsPerInterval} time(s) every {interval}h, up to {maxPosts} intervals. Each interval counts as 1/{maxPosts}.
+                Will post {postsPerInterval} time(s) every {interval}h, up to {maxPosts} intervals. Each interval counts as 1/{maxPosts}. <span className="text-primary font-medium">✨ AI generates unique text for every post!</span>
               </p>
 
               <Button onClick={handleCreate} disabled={creating || !description.trim()}>
