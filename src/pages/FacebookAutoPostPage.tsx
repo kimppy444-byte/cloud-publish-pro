@@ -42,6 +42,11 @@ const FacebookAutoPostPage = () => {
   // Existing auto-posts
   const [autoPosts, setAutoPosts] = useState<any[]>([]);
 
+  // Scripts
+  const [scripts, setScripts] = useState<Script[]>([]);
+  const [loadingScripts, setLoadingScripts] = useState(false);
+  const [showScripts, setShowScripts] = useState(false);
+
   useEffect(() => {
     loadPages();
     loadAutoPosts();
