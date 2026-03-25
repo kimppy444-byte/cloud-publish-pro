@@ -41,6 +41,11 @@ const ThreadsPage = () => {
   const [autoMaxPosts, setAutoMaxPosts] = useState(5);
   const [creatingAuto, setCreatingAuto] = useState(false);
 
+  // Scripts
+  const [scripts, setScripts] = useState<Script[]>([]);
+  const [loadingScripts, setLoadingScripts] = useState(false);
+  const [showScripts, setShowScripts] = useState(false);
+
   useEffect(() => {
     loadProfile();
     loadThreads();
