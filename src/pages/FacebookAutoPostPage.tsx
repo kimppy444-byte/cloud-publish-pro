@@ -154,6 +154,28 @@ const FacebookAutoPostPage = () => {
     toast.success("Hashtags applied!");
   };
 
+  const loadScripts = async () => {
+    setLoadingScripts(true);
+    try {
+      const res = await fetchScripts({ limit: 20 });
+      setScripts(res.data);
+    } catch (err: any) {
+      toast.error("Failed to load scripts: " + err.message);
+    }
+    setLoadingScripts(false);
+  };
+
+  const useScript = (script: Script) => {
+    setDescription(`🎮 ${script.title}\n\n${script.description}\n\nGame: ${script.game_name}`);
+    if (script.github_video_url) {
+      setVideoUrl(script.github_video_url);
+      setPostType("video");
+    }
+    setHashtags(`#${script.game_name.replace(/\s+/g, '')} #roblox #gaming #scripts`);
+    setShowScripts(false);
+    toast.success(`Loaded script: ${script.title}`);
+  };
+
   if (loadingPages) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
