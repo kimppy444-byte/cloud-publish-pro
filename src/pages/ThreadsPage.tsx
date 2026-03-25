@@ -374,7 +374,7 @@ const ThreadsPage = () => {
           </div>
 
           <p className="text-xs text-muted-foreground">
-            Will post {autoPostsPerInterval} thread(s) every {autoInterval}h, up to {autoMaxPosts} intervals. Each interval counts as 1/{autoMaxPosts}.
+            Will post {autoPostsPerInterval} thread(s) every {autoInterval}h, up to {autoMaxPosts} intervals. Each interval counts as 1/{autoMaxPosts}. <span className="text-primary font-medium">✨ AI generates unique text for every post!</span>
           </p>
 
           <Button onClick={handleCreateAutoPost} disabled={creatingAuto || !autoText.trim()}>
