@@ -166,6 +166,28 @@ const ThreadsPage = () => {
     loadAutoPosts();
   };
 
+  const loadScripts = async () => {
+    setLoadingScripts(true);
+    try {
+      const res = await fetchScripts({ limit: 20 });
+      setScripts(res.data);
+    } catch (err: any) {
+      toast.error("Failed to load scripts: " + err.message);
+    }
+    setLoadingScripts(false);
+  };
+
+  const useScript = (script: Script) => {
+    setAutoText(`🎮 ${script.title}\n\n${script.description}\n\nGame: ${script.game_name}`);
+    setAutoTopic(`#${script.game_name.replace(/\s+/g, '')}`);
+    if (script.github_video_url) {
+      setAutoMediaUrl(script.github_video_url);
+      setAutoMediaType("VIDEO");
+    }
+    setShowScripts(false);
+    toast.success(`Loaded script: ${script.title}`);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
