@@ -25,21 +25,37 @@ async function callAiSuggest(body: Record<string, any>): Promise<AiSuggestRespon
   }
 }
 
-export async function suggestHashtags(content: string, platform?: string) {
-  return callAiSuggest({ action: 'suggest_hashtags', content, platform });
-}
+// ═══════════════════════════════════════════
+// YOUTUBE
+// ═══════════════════════════════════════════
 
 export async function improveDescription(content: string, platform?: string) {
-  return callAiSuggest({ action: 'improve_description', content, platform });
+  return callAiSuggest({ action: platform === 'youtube' ? 'improve_youtube' : 'improve_description', content, platform: platform || 'youtube' });
 }
+
+export async function suggestHashtags(content: string, platform?: string) {
+  return callAiSuggest({ action: platform === 'youtube' ? 'suggest_youtube_hashtags' : 'suggest_hashtags', content, platform: platform || 'youtube' });
+}
+
+export async function suggestYouTubeTitle(content: string) {
+  return callAiSuggest({ action: 'suggest_youtube_title', content, platform: 'youtube' });
+}
+
+// ═══════════════════════════════════════════
+// TWITTER / X
+// ═══════════════════════════════════════════
 
 export async function suggestTweet(content: string) {
-  return callAiSuggest({ action: 'suggest_tweet', content, platform: 'twitter' });
+  return callAiSuggest({ action: 'improve_tweet', content, platform: 'twitter' });
 }
 
-export async function suggestBestTimes(content: string, platform?: string) {
-  return callAiSuggest({ action: 'best_posting_times', content, platform });
+export async function suggestXHashtags(content: string) {
+  return callAiSuggest({ action: 'suggest_x_hashtags', content, platform: 'twitter' });
 }
+
+// ═══════════════════════════════════════════
+// THREADS
+// ═══════════════════════════════════════════
 
 export async function improveThread(content: string) {
   return callAiSuggest({ action: 'improve_thread', content, platform: 'threads' });
@@ -49,10 +65,26 @@ export async function suggestTopic(content: string) {
   return callAiSuggest({ action: 'suggest_topic', content, platform: 'threads' });
 }
 
+// ═══════════════════════════════════════════
+// FACEBOOK
+// ═══════════════════════════════════════════
+
 export async function improveFacebookPost(content: string) {
   return callAiSuggest({ action: 'improve_facebook', content, platform: 'facebook' });
 }
 
 export async function suggestFacebookHashtags(content: string) {
   return callAiSuggest({ action: 'suggest_facebook_hashtags', content, platform: 'facebook' });
+}
+
+// ═══════════════════════════════════════════
+// CROSS-PLATFORM
+// ═══════════════════════════════════════════
+
+export async function suggestBestTimes(content: string, platform?: string) {
+  return callAiSuggest({ action: 'best_posting_times', content, platform: platform || 'all' });
+}
+
+export async function crossPlatformStrategy(content: string) {
+  return callAiSuggest({ action: 'cross_platform_strategy', content, platform: 'all' });
 }
