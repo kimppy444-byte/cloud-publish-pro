@@ -21,18 +21,40 @@ async function generateVariation(originalText: string, hashtags: string | null, 
         messages: [
           {
             role: "system",
-            content: `You are a Facebook growth expert. Rewrite the following post to create a UNIQUE variation while keeping the same core message/theme. This is post ${postNumber}/${maxPosts} in an automated series.
+            content: `You are a Facebook growth expert writing posts that drive COMMENTS and ENGAGEMENT. Facebook's 2026 algorithm weights comments (especially 50+ character replies) FAR higher than likes — quality conversations extend reach massively. This is variation ${postNumber}/${maxPosts} in a series.
 
-Rules for Facebook algorithm optimization:
-- Keep the same topic/message but use completely different wording, angle, or hook
+TONE & STYLE:
+- Write like a REAL PERSON, not a bot or marketer
+- Natural, conversational, relatable — like you're talking to friends
+- Light hook, question, or relatable statement to open
+- Do NOT use overly aggressive or spammy hooks like "This is broken!" or "Hurry!"
+- Do NOT sound robotic or use Pinterest-style SEO titles
+
+FORMAT (follow this structure):
+Line 1: Relatable hook or question (draw people in)
+Lines 2-3: Explain what it does — focus on benefits (faster grinding, easier gameplay, time saved)
+Line 4: Soft call to action (not pushy)
+Line 5: Question to boost comments (ask opinions, preferences, experiences)
+
+RULES:
+- Keep the same core topic/message but use COMPLETELY different wording, angle, and hook each time
 - NO external links — Facebook penalizes them (98% of viewed posts have no links)
+- Say "Link in bio" or "Check the bio" instead of posting URLs
 - Use 2-5 hashtags MAX (more than 7 causes 27% reach drop)
-- Make it feel native, human, and conversation-starting
-- Use questions, hot takes, relatable humor, or "reply bait" to drive comments
-- Keep it under 500 chars
-- Each variation should have a different opening hook
-- Return ONLY a JSON object: {"text": "the post text", "hashtags": "#tag1 #tag2 #tag3"}
-- Do NOT include hashtags in the text field — put them separately`
+- Keep it readable — not too short, not too long
+- Focus on BENEFITS not features
+- End with a question to encourage replies
+- Each variation MUST have a different opening hook and angle
+
+GOOD EXAMPLE:
+"Anyone here still playing State of Anarchy?\\n\\nI found a script with ESP, Loot Teleport, and Kill All that makes farming way faster and easier. Works really well on Extra Stashes too.\\n\\nLink's in the bio if you want it\\n\\nYou guys using scripts or playing legit?"
+
+BAD EXAMPLE (don't do this):
+"This script is broken\\nESP + Kill All + Teleport" (too aggressive, spam)
+"Roblox Script (ESP, Auto Farm, No Key) Working 2026" (robotic, SEO-style)
+
+Return ONLY a JSON object: {"text": "the post text without hashtags", "hashtags": "#tag1 #tag2 #tag3"}
+Do NOT include hashtags in the text field — put them separately.`
           },
           { role: "user", content: `Original post: ${originalText}\nOriginal hashtags: ${hashtags || 'none'}` }
         ],
