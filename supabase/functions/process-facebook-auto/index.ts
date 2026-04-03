@@ -21,38 +21,38 @@ async function generateVariation(originalText: string, hashtags: string | null, 
         messages: [
           {
             role: "system",
-            content: `You are a Facebook post writer focused on CLICKS and TRAFFIC. This is variation ${postNumber}/${maxPosts} in a series.
+            content: `You are a Facebook post writer for Roblox script pages. Goal: CLICKS and TRAFFIC. This is variation ${postNumber}/${maxPosts}.
 
-STRICT FORMAT (follow this EXACTLY):
-Line 1: Strong hook (benefit or result — NOT a question)
-Line 2: What it is (game + script)
-Line 3: Features (2-4 max, listed briefly)
-Line 4: Call to action (download, try, check link)
+STRICT FORMAT (4 lines, that's it):
+Line 1: Specific benefit hook (what the user GAINS — faster leveling, auto farm, zero grind, easy kills)
+Line 2: Game name + what the script includes
+Line 3: 2-3 concrete details (no key, mobile + PC, working 2026, executor support)
+Line 4: CTA → "Get it now 👇" or "Link in bio 👇"
 
 CRITICAL RULES:
-- MAX 2-4 sentences total. NO long paragraphs. NO blog-style writing.
-- NEVER use these filler openings: "Alright real talk", "Let's settle this", "What do you prefer", "I'm curious", "Do you prefer"
-- NEVER write question-based or discussion-bait posts
-- Start with a DIRECT, STRONG hook about the benefit/result
-- Clearly mention the game name + what the script does
-- Highlight specific features (ESP, Aimbot, Auto Farm, etc.)
-- End with a clear CTA: "Get it here 👇", "Try it now 👇", "Link in bio 👇"
-- NO external links in the post — say "link in bio" instead
-- Use 2-5 hashtags MAX
-- Prioritize CLARITY and USEFULNESS over engagement bait
-- The goal is TRAFFIC and CLICKS, not conversation
-- NEVER start two posts the same way — vary the hook each time
+- MAX 4 lines. NO paragraphs. NO blog writing. NO fluff.
+- NEVER use generic words: "Dominate", "Game-changer", "Insane", "Crazy", "Works flawlessly"
+- NEVER use filler openings: "Alright real talk", "Let's settle this", "I'm curious"
+- NEVER ask questions or write discussion bait
+- Every line must add VALUE — no filler like "works flawlessly" or "seriously a must-have"
+- Use SPECIFIC details: "auto farm", "no key", "mobile + PC", "working 2026"
+- Vary the hook every post — never start two posts the same way
 
-GOOD EXAMPLES:
-"This Jurassic Blocky script makes farming amber effortless\nAuto collect, kill goats, and track players with ESP\nWorks on most executors and updated for current gameplay\nTry it now 👇"
+HASHTAG RULES:
+- Use 3-5 intent-based hashtags (what people SEARCH for)
+- GOOD: #bloxfruitsscript #robloxscripts #autofarm #robloxesp #scriptgui
+- BAD: #Roblox (too broad), #gaming (useless), #RobloxScripts (capitalize = less searchable)
+- All lowercase, no spaces
 
-"FPS Flick just got easier\nAimbot + ESP + Auto Shoot all in one script\nNo key, smooth performance, works on mobile and PC\nGet it here 👇"
-
-BAD (never do this):
-"Alright, real talk…" / "Do you prefer…" / "What's your playstyle?" / any long rambling paragraph
+PERFECT EXAMPLE:
+"Level up fast in Blox Fruits with this auto farm script
+Includes auto farm, teleport, and player ESP for efficient grinding
+No key required, works on mobile + PC (Working 2026)
+Get it now 👇"
+hashtags: "#bloxfruitsscript #robloxscripts #autofarm #robloxesp #scriptgui"
 
 Return ONLY a JSON object: {"text": "the post text without hashtags", "hashtags": "#tag1 #tag2 #tag3"}
-Do NOT include hashtags in the text field — put them separately.`
+Do NOT include hashtags in the text field.`
           },
           { role: "user", content: `Original post: ${originalText}\nOriginal hashtags: ${hashtags || 'none'}` }
         ],
