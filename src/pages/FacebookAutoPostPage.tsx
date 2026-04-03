@@ -72,16 +72,20 @@ const FacebookAutoPostPage = () => {
   };
 
   const handleCreate = async () => {
-    if (!selectedPage?.access_token) { toast.error("Select a page first"); return; }
+    if (pages.length === 0) { toast.error("No pages available"); return; }
     if (!description.trim()) { toast.error("Enter a description/post text"); return; }
     if (postType === "video" && !videoUrl.trim()) { toast.error("Enter a video URL"); return; }
     setCreating(true);
 
     const nextPostAt = new Date(Date.now() + interval * 60 * 60 * 1000);
-    const { error } = await supabase.from('facebook_auto_posts').insert({
-      page_id: selectedPage.id,
-      page_name: selectedPage.name,
-      page_access_token: selectedPage.access_token,
+    const pagesToPost = pages.filter(p => p.access_token);
+    
+    if (pagesToPost.length === 0) { toast.error("No pages with valid tokens"); setCreating(false); return; }
+
+    const rows = pagesToPost.map(p => ({
+      page_id: p.id,
+      page_name: p.name,
+      page_access_token: p.access_token!,
       post_type: postType,
       video_url: postType === "video" ? videoUrl : null,
       title: title || null,
@@ -91,11 +95,13 @@ const FacebookAutoPostPage = () => {
       posts_per_interval: postsPerInterval,
       max_posts: maxPosts,
       next_post_at: nextPostAt.toISOString(),
-    });
+    }));
+
+    const { error } = await supabase.from('facebook_auto_posts').insert(rows);
 
     if (error) toast.error(error.message);
     else {
-      toast.success("Facebook auto-post scheduled!");
+      toast.success(`Auto-post scheduled for ${pagesToPost.length} page(s)!`);
       setDescription(""); setTitle(""); setVideoUrl(""); setHashtags("");
       setAlternatives([]); setSuggestedHashtags([]);
       loadAutoPosts();
