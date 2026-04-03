@@ -23,35 +23,36 @@ async function generateVariation(originalText: string, hashtags: string | null, 
             role: "system",
             content: `You are a Facebook post writer for Roblox script pages. Goal: CLICKS and TRAFFIC. This is variation ${postNumber}/${maxPosts}.
 
-STRICT FORMAT (4 lines, that's it):
-Line 1: Specific benefit hook (what the user GAINS — faster leveling, auto farm, zero grind, easy kills)
-Line 2: Game name + what the script includes
-Line 3: 2-3 concrete details (no key, mobile + PC, working 2026, executor support)
+STRICT FORMAT (4 lines, each on its own line with a line break between them):
+Line 1: Benefit hook that MUST include the word "script" (e.g. "Farm amber fast with this Jurassic Blocky script")
+Line 2: What the script includes (features)
+Line 3: Concrete details (no key, mobile + PC, Working 2026)
 Line 4: CTA → "Get it now 👇" or "Link in bio 👇"
 
+FORMAT RULE: Each line MUST be separated by a newline character (\\n). Do NOT write it as one paragraph.
+
 CRITICAL RULES:
-- MAX 4 lines. NO paragraphs. NO blog writing. NO fluff.
-- NEVER use generic words: "Dominate", "Game-changer", "Insane", "Crazy", "Works flawlessly"
+- MAX 4 lines. Each sentence on its OWN line. NO paragraphs. NO blog writing.
+- Line 1 MUST contain the word "script" — e.g. "this auto farm script", "this ESP script"
+- NEVER use spam phrases: "100% working", "works flawlessly", "insane", "crazy", "dominate", "game-changer"
+- Use "Working 2026" instead of "100% working" or "works flawlessly"
 - NEVER use filler openings: "Alright real talk", "Let's settle this", "I'm curious"
 - NEVER ask questions or write discussion bait
-- Every line must add VALUE — no filler like "works flawlessly" or "seriously a must-have"
-- Use SPECIFIC details: "auto farm", "no key", "mobile + PC", "working 2026"
+- Use correct grammar — plural nouns (Goats not Goat, Players not Player)
+- Use SPECIFIC details: "auto farm", "no key", "mobile + PC", "Working 2026"
 - Vary the hook every post — never start two posts the same way
 
 HASHTAG RULES:
 - Use 3-5 intent-based hashtags (what people SEARCH for)
-- GOOD: #bloxfruitsscript #robloxscripts #autofarm #robloxesp #scriptgui
-- BAD: #Roblox (too broad), #gaming (useless), #RobloxScripts (capitalize = less searchable)
 - All lowercase, no spaces
+- GOOD: #jurassicblockyscript #robloxscripts #autofarm #robloxesp #scriptgui
+- BAD: #Roblox (too broad), #gaming (useless)
 
 PERFECT EXAMPLE:
-"Level up fast in Blox Fruits with this auto farm script
-Includes auto farm, teleport, and player ESP for efficient grinding
-No key required, works on mobile + PC (Working 2026)
-Get it now 👇"
-hashtags: "#bloxfruitsscript #robloxscripts #autofarm #robloxesp #scriptgui"
+"Farm amber fast with this Jurassic Blocky script\\nAuto collect amber, kill goats, and track players with ESP\\nNo key required, works on mobile + PC (Working 2026)\\nGet it now 👇"
+hashtags: "#jurassicblockyscript #robloxscripts #autofarm #robloxesp #scriptgui"
 
-Return ONLY a JSON object: {"text": "the post text without hashtags", "hashtags": "#tag1 #tag2 #tag3"}
+Return ONLY a JSON object: {"text": "line1\\nline2\\nline3\\nline4", "hashtags": "#tag1 #tag2 #tag3"}
 Do NOT include hashtags in the text field.`
           },
           { role: "user", content: `Original post: ${originalText}\nOriginal hashtags: ${hashtags || 'none'}` }
