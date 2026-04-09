@@ -154,8 +154,9 @@ export async function uploadVideoToYouTube(
       if (!parts.includes("paidProductPlacementDetails")) parts.push("paidProductPlacementDetails");
     }
 
+    const notifyParam = metadata.notifySubscribers === false ? "&notifySubscribers=false" : "";
     const initRes = await fetch(
-      "https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status",
+      `https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=${parts.join(",")}${notifyParam}`,
       {
         method: "POST",
         headers: {
