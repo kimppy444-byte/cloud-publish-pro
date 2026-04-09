@@ -497,6 +497,10 @@ const UploadPage = () => {
                   tags: [...selectedTags, "Shorts", "Short"],
                   categoryId: category, privacyStatus: privacy,
                   allowComments, allowRatings,
+                  defaultLanguage: defaultLanguage || undefined,
+                  license, publicStatsViewable: publicStats,
+                  madeForKids, containsSyntheticMedia, paidPromotion,
+                  notifySubscribers,
                 });
 
                 // Smart link for Shorts version
