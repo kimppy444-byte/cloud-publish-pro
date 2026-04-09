@@ -89,6 +89,16 @@ const UploadPage = () => {
   const [allowRatings, setAllowRatings] = useState(true);
   const [repeatCount, setRepeatCount] = useState(1);
 
+  // New YouTube metadata fields
+  const [defaultLanguage, setDefaultLanguage] = useState('');
+  const [license, setLicense] = useState<'youtube' | 'creativeCommon'>('youtube');
+  const [publicStats, setPublicStats] = useState(true);
+  const [madeForKids, setMadeForKids] = useState(false);
+  const [containsSyntheticMedia, setContainsSyntheticMedia] = useState(false);
+  const [paidPromotion, setPaidPromotion] = useState(false);
+  const [recordingDate, setRecordingDate] = useState('');
+  const [notifySubscribers, setNotifySubscribers] = useState(true);
+
   const [translating, setTranslating] = useState(false);
   const [translateLang, setTranslateLang] = useState('es');
 
