@@ -339,6 +339,11 @@ const UploadPage = () => {
               title: finalTitle, description: finalDesc,
               tags: selectedTags, categoryId: category, privacyStatus: privacy,
               allowComments, allowRatings,
+              defaultLanguage: defaultLanguage || undefined,
+              license, publicStatsViewable: publicStats,
+              madeForKids, containsSyntheticMedia, paidPromotion,
+              recordingDate: recordingDate || undefined,
+              notifySubscribers,
             });
             if (res.success && res.videoId && thumbnail) {
               await uploadThumbnail(dest.accessToken, res.videoId, thumbnail);
