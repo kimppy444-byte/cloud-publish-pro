@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import {
   Upload as UploadIcon, Facebook, Instagram, X, Loader2, CheckCircle2, XCircle, AlertCircle,
-  Scissors, Film, Sparkles, ImageIcon, Trash2, Globe, Lock, Eye, ExternalLink, Tag, Languages
+  Scissors, Film, Sparkles, ImageIcon, Trash2, Globe, Lock, Eye, ExternalLink, Tag, Languages, Settings2, ChevronDown
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -88,6 +88,16 @@ const UploadPage = () => {
   const [allowComments, setAllowComments] = useState(true);
   const [allowRatings, setAllowRatings] = useState(true);
   const [repeatCount, setRepeatCount] = useState(1);
+
+  // New YouTube metadata fields
+  const [defaultLanguage, setDefaultLanguage] = useState('');
+  const [license, setLicense] = useState<'youtube' | 'creativeCommon'>('youtube');
+  const [publicStats, setPublicStats] = useState(true);
+  const [madeForKids, setMadeForKids] = useState(false);
+  const [containsSyntheticMedia, setContainsSyntheticMedia] = useState(false);
+  const [paidPromotion, setPaidPromotion] = useState(false);
+  const [recordingDate, setRecordingDate] = useState('');
+  const [notifySubscribers, setNotifySubscribers] = useState(true);
 
   const [translating, setTranslating] = useState(false);
   const [translateLang, setTranslateLang] = useState('es');
@@ -329,6 +339,11 @@ const UploadPage = () => {
               title: finalTitle, description: finalDesc,
               tags: selectedTags, categoryId: category, privacyStatus: privacy,
               allowComments, allowRatings,
+              defaultLanguage: defaultLanguage || undefined,
+              license, publicStatsViewable: publicStats,
+              madeForKids, containsSyntheticMedia, paidPromotion,
+              recordingDate: recordingDate || undefined,
+              notifySubscribers,
             });
             if (res.success && res.videoId && thumbnail) {
               await uploadThumbnail(dest.accessToken, res.videoId, thumbnail);
@@ -482,6 +497,10 @@ const UploadPage = () => {
                   tags: [...selectedTags, "Shorts", "Short"],
                   categoryId: category, privacyStatus: privacy,
                   allowComments, allowRatings,
+                  defaultLanguage: defaultLanguage || undefined,
+                  license, publicStatsViewable: publicStats,
+                  madeForKids, containsSyntheticMedia, paidPromotion,
+                  notifySubscribers,
                 });
 
                 // Smart link for Shorts version
@@ -840,6 +859,91 @@ const UploadPage = () => {
               </div>
             </div>
           </div>
+
+          {/* Advanced YouTube Settings */}
+          <details className="group">
+            <summary className="flex items-center gap-2 cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2">
+              <Settings2 className="w-4 h-4" />
+              Advanced YouTube Settings
+              <ChevronDown className="w-4 h-4 ml-auto group-open:rotate-180 transition-transform" />
+            </summary>
+            <div className="space-y-4 pt-3 pb-1">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-1.5 block">Video Language</label>
+                  <select value={defaultLanguage} onChange={e => setDefaultLanguage(e.target.value)}
+                    disabled={uploading}
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground">
+                    <option value="">Auto-detect</option>
+                    <option value="en">English</option>
+                    <option value="es">Spanish</option>
+                    <option value="fr">French</option>
+                    <option value="de">German</option>
+                    <option value="pt">Portuguese</option>
+                    <option value="it">Italian</option>
+                    <option value="ja">Japanese</option>
+                    <option value="ko">Korean</option>
+                    <option value="zh">Chinese</option>
+                    <option value="ar">Arabic</option>
+                    <option value="ru">Russian</option>
+                    <option value="hi">Hindi</option>
+                    <option value="id">Indonesian</option>
+                    <option value="tr">Turkish</option>
+                    <option value="vi">Vietnamese</option>
+                    <option value="th">Thai</option>
+                    <option value="tl">Filipino</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-1.5 block">Recording Date</label>
+                  <Input type="date" value={recordingDate} onChange={e => setRecordingDate(e.target.value)}
+                    disabled={uploading} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-1.5 block">License</label>
+                  <select value={license} onChange={e => setLicense(e.target.value as any)}
+                    disabled={uploading}
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground">
+                    <option value="youtube">Standard YouTube License</option>
+                    <option value="creativeCommon">Creative Commons - Attribution</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-1.5 block">Declarations</label>
+                  <div className="space-y-2 p-3 bg-muted rounded-lg">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={notifySubscribers} onChange={e => setNotifySubscribers(e.target.checked)}
+                        disabled={uploading} className="rounded w-4 h-4" />
+                      <span className="text-xs">Notify subscribers</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={publicStats} onChange={e => setPublicStats(e.target.checked)}
+                        disabled={uploading} className="rounded w-4 h-4" />
+                      <span className="text-xs">Show public stats</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={madeForKids} onChange={e => setMadeForKids(e.target.checked)}
+                        disabled={uploading} className="rounded w-4 h-4" />
+                      <span className="text-xs">Made for Kids (COPPA)</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={containsSyntheticMedia} onChange={e => setContainsSyntheticMedia(e.target.checked)}
+                        disabled={uploading} className="rounded w-4 h-4" />
+                      <span className="text-xs">Contains AI-generated content</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={paidPromotion} onChange={e => setPaidPromotion(e.target.checked)}
+                        disabled={uploading} className="rounded w-4 h-4" />
+                      <span className="text-xs">Paid promotion / sponsorship</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </details>
         </div>
       </motion.div>
 

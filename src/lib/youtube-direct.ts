@@ -107,28 +107,56 @@ export async function uploadVideoToYouTube(
     allowComments: boolean;
     allowRatings: boolean;
     scheduled?: string;
+    defaultLanguage?: string;
+    license?: "youtube" | "creativeCommon";
+    publicStatsViewable?: boolean;
+    madeForKids?: boolean;
+    containsSyntheticMedia?: boolean;
+    paidPromotion?: boolean;
+    recordingDate?: string;
+    notifySubscribers?: boolean;
+    localizations?: Record<string, { title: string; description: string }>;
   },
   onProgress?: (pct: number) => void
 ): Promise<{ success: boolean; videoId?: string; error?: string }> {
   try {
-    const body = {
+    const parts = ["snippet", "status"];
+    if (metadata.recordingDate) parts.push("recordingDetails");
+    if (metadata.localizations && Object.keys(metadata.localizations).length > 0) parts.push("localizations");
+
+    const body: Record<string, any> = {
       snippet: {
         title: metadata.title.substring(0, 100),
         description: metadata.description.substring(0, 5000),
         tags: metadata.tags.length > 0 ? metadata.tags.slice(0, 30) : undefined,
         categoryId: metadata.categoryId,
+        ...(metadata.defaultLanguage ? { defaultLanguage: metadata.defaultLanguage } : {}),
       },
       status: {
         privacyStatus: metadata.privacyStatus,
-        selfDeclaredMadeForKids: false,
+        selfDeclaredMadeForKids: metadata.madeForKids ?? false,
         embeddable: true,
-        publicStatsViewable: true,
+        license: metadata.license || "youtube",
+        publicStatsViewable: metadata.publicStatsViewable ?? true,
+        ...(metadata.containsSyntheticMedia !== undefined ? { containsSyntheticMedia: metadata.containsSyntheticMedia } : {}),
         ...(metadata.scheduled ? { publishAt: metadata.scheduled } : {}),
       },
     };
 
+    if (metadata.recordingDate) {
+      body.recordingDetails = { recordingDate: metadata.recordingDate };
+    }
+    if (metadata.localizations && Object.keys(metadata.localizations).length > 0) {
+      body.localizations = metadata.localizations;
+    }
+    if (metadata.paidPromotion) {
+      body.paidProductPlacementDetails = { hasPaidProductPlacement: true };
+      if (!parts.includes("paidProductPlacementDetails")) parts.push("paidProductPlacementDetails");
+    }
+
+    const notifyParam = metadata.notifySubscribers === false ? "&notifySubscribers=false" : "";
     const initRes = await fetch(
-      "https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status",
+      `https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=${parts.join(",")}${notifyParam}`,
       {
         method: "POST",
         headers: {
