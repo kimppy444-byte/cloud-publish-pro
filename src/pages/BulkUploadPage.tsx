@@ -18,7 +18,7 @@ import {
   uploadThumbnail,
   type StoredYouTubeChannel,
 } from "@/lib/youtube-direct";
-import { generateYouTubeSmartLink } from "@/lib/smart-link-api";
+import { generateYouTubeSmartLink, translateText } from "@/lib/smart-link-api";
 
 type PrivacyStatus = "public" | "private" | "unlisted";
 type UploadMode = "same" | "different";
@@ -46,6 +46,7 @@ interface VideoUploadItem {
   dualUpload: boolean;
   customShortsDuration: number;
   repeatCount: number;
+  multiLangTargets: string[];
 }
 
 type UploadStatusMap = Record<string, "pending" | "uploading" | "success" | "error">;
@@ -127,6 +128,7 @@ const BulkUploadPage = () => {
       expandedSettings: false, previewUrl: null, duration: null,
       isShort: false, showEditor: false, dualUpload: false, customShortsDuration: 59,
       repeatCount: 1,
+      multiLangTargets: [],
     };
     setVideos(prev => [...prev, newVideo]);
   };
@@ -169,19 +171,46 @@ const BulkUploadPage = () => {
       setUploadStatus(p => ({ ...p, [video.id]: "uploading" }));
       const parsedTags = video.tags.split(",").map(t => t.trim()).filter(Boolean).slice(0, 30);
 
+      // Build language passes: original first, then 1 translated copy per selected language.
+      const langPasses: Array<{ lang: string; title: string; description: string; langCode: string }> = [
+        { lang: 'Original', title: video.title, description: video.description, langCode: 'en' },
+      ];
+      for (const targetLang of (video.multiLangTargets || [])) {
+        if (targetLang === 'en') continue;
+        setStatusMessages(p => ({ ...p, [video.id]: `Translating to ${targetLang.toUpperCase()}...` }));
+        const [tRes, dRes] = await Promise.all([
+          translateText(video.title, targetLang, 'en'),
+          video.description ? translateText(video.description, targetLang, 'en') : Promise.resolve({ success: true, translatedText: '' } as any),
+        ]);
+        langPasses.push({
+          lang: targetLang.toUpperCase(),
+          title: tRes.success && tRes.translatedText ? tRes.translatedText : video.title,
+          description: dRes.success && dRes.translatedText !== undefined ? dRes.translatedText : video.description,
+          langCode: targetLang,
+        });
+      }
+
+      const totalUnits = totalRepeats * langPasses.length * targetChannelIds.length;
+      let unitIdx = 0;
+
       for (let repeatIdx = 0; repeatIdx < totalRepeats; repeatIdx++) {
         const repeatLabel = totalRepeats > 1 ? ` (copy ${repeatIdx + 1}/${totalRepeats})` : '';
+
+      for (const langPass of langPasses) {
+        const langSuffix = langPasses.length > 1 ? ` [${langPass.lang}]` : '';
 
       for (let i = 0; i < targetChannelIds.length; i++) {
         const chId = targetChannelIds[i];
         const channelData = channelTokenMap[chId];
         if (!channelData) continue;
 
-        setStatusMessages(p => ({ ...p, [video.id]: `Uploading to ${channelData.channelTitle || "channel"} (${i + 1}/${targetChannelIds.length})…` }));
+        setStatusMessages(p => ({ ...p, [video.id]: `Uploading to ${channelData.channelTitle || "channel"}${langSuffix}${repeatLabel} (${unitIdx + 1}/${totalUnits})…` }));
 
         const isShort = video.isShort && (video.duration || 0) <= 60;
-        const title = isShort && !video.title.includes("#Shorts") ? `${video.title} #Shorts` : video.title;
-        const description = isShort && !video.description.includes("#Shorts") ? `${video.description}\n\n#Shorts` : video.description;
+        const baseTitle = langPass.title;
+        const baseDesc = langPass.description;
+        const title = isShort && !baseTitle.includes("#Shorts") ? `${baseTitle} #Shorts` : baseTitle;
+        const description = isShort && !baseDesc.includes("#Shorts") ? `${baseDesc}\n\n#Shorts` : baseDesc;
         const tags = isShort ? [...parsedTags, "Shorts", "Short"].filter((t, i, s) => s.indexOf(t) === i) : parsedTags;
 
         const result = await uploadVideoToYouTube(
@@ -194,8 +223,9 @@ const BulkUploadPage = () => {
             allowComments: video.allowComments,
             allowRatings: video.allowRatings,
             scheduled: video.scheduled && video.scheduleTime ? video.scheduleTime : undefined,
+            defaultLanguage: langPass.langCode,
           },
-          (pct) => setUploadProgress(p => ({ ...p, [video.id]: Math.round((i / targetChannelIds.length) * 100 + pct / targetChannelIds.length) }))
+          (pct) => setUploadProgress(p => ({ ...p, [video.id]: Math.round((unitIdx / totalUnits) * 100 + pct / totalUnits) }))
         );
 
         if (!result.success) throw new Error(result.error || "Upload failed");
@@ -220,12 +250,14 @@ const BulkUploadPage = () => {
           }
         }
 
-        setUploadProgress(p => ({ ...p, [video.id]: Math.round(((i + 1) / targetChannelIds.length) * 100) }));
+        unitIdx++;
+        setUploadProgress(p => ({ ...p, [video.id]: Math.round((unitIdx / totalUnits) * 100) }));
       }
+      } // end langPass loop
       } // end repeatCount loop
 
       setUploadStatus(p => ({ ...p, [video.id]: "success" }));
-      setStatusMessages(p => ({ ...p, [video.id]: `Uploaded to ${targetChannelIds.length} channel(s)` }));
+      setStatusMessages(p => ({ ...p, [video.id]: `Uploaded ${totalUnits} time(s) across ${targetChannelIds.length} channel(s)` }));
       return true;
     } catch (err: any) {
       setUploadStatus(p => ({ ...p, [video.id]: "error" }));
@@ -497,6 +529,52 @@ const BulkUploadPage = () => {
                   <label className="text-sm font-semibold mb-1.5 block">Tags</label>
                   <Input value={video.tags} onChange={e => updateVideo(video.id, { tags: e.target.value })}
                     placeholder="gaming, tutorial, vlog (comma separated)" disabled={isUploading} />
+                </div>
+
+                {/* Multi-language uploads per video */}
+                <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Sparkles className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-xs font-semibold text-foreground">Multi-Language Uploads</span>
+                    {video.multiLangTargets.length > 0 && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                        +{video.multiLangTargets.length} translated copy{video.multiLangTargets.length === 1 ? '' : 's'}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {[
+                      { code: 'es', label: 'ES' }, { code: 'fr', label: 'FR' },
+                      { code: 'de', label: 'DE' }, { code: 'pt', label: 'PT' },
+                      { code: 'it', label: 'IT' }, { code: 'ja', label: 'JA' },
+                      { code: 'ko', label: 'KO' }, { code: 'zh', label: 'ZH' },
+                      { code: 'ar', label: 'AR' }, { code: 'ru', label: 'RU' },
+                      { code: 'hi', label: 'HI' }, { code: 'id', label: 'ID' },
+                      { code: 'tr', label: 'TR' }, { code: 'vi', label: 'VI' },
+                      { code: 'th', label: 'TH' }, { code: 'tl', label: 'TL' },
+                    ].map(l => {
+                      const active = video.multiLangTargets.includes(l.code);
+                      return (
+                        <button
+                          key={l.code}
+                          type="button"
+                          disabled={isUploading}
+                          onClick={() => updateVideo(video.id, {
+                            multiLangTargets: active
+                              ? video.multiLangTargets.filter(c => c !== l.code)
+                              : [...video.multiLangTargets, l.code],
+                          })}
+                          className={`px-2 py-0.5 rounded-full text-[10px] border transition-all ${
+                            active
+                              ? 'bg-primary text-primary-foreground border-primary'
+                              : 'bg-background border-border hover:border-primary/50'
+                          } disabled:opacity-50`}
+                        >
+                          {l.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 

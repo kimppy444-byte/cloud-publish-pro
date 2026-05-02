@@ -102,6 +102,10 @@ const UploadPage = () => {
   const [translating, setTranslating] = useState(false);
   const [translateLang, setTranslateLang] = useState('es');
 
+  // Multi-language upload: for each selected language, create a translated copy of the upload.
+  // Empty array = original behavior (single original-language upload only).
+  const [multiLangTargets, setMultiLangTargets] = useState<string[]>([]);
+
   // AI states
   const [aiLoading, setAiLoading] = useState<string | null>(null);
   const [aiSuggestedTags, setAiSuggestedTags] = useState<string[]>([]);
@@ -282,11 +286,42 @@ const UploadPage = () => {
       const selected = destinations.filter(d => selectedAccounts.includes(d.id));
       const tags = selectedTags.join(',');
 
+      // Build the language list to upload for. Empty multiLangTargets => single pass with originals.
+      const langPasses: Array<{ lang: string; title: string; description: string; langCode: string }> = [];
+      const originalLangCode = defaultLanguage || 'en';
+      langPasses.push({ lang: 'Original', title, description, langCode: originalLangCode });
+
+      for (const targetLang of multiLangTargets) {
+        if (targetLang === originalLangCode) continue; // skip duplicate of original
+        setUploadProgress(`Translating to ${targetLang.toUpperCase()}...`);
+        const [tRes, dRes] = await Promise.all([
+          translateText(title, targetLang, originalLangCode),
+          description ? translateText(description, targetLang, originalLangCode) : Promise.resolve({ success: true, translatedText: '' } as any),
+        ]);
+        if (!tRes.success) {
+          toast.warning(`Title translation to ${targetLang} failed: ${tRes.error}. Using original.`);
+        }
+        langPasses.push({
+          lang: targetLang.toUpperCase(),
+          title: tRes.success && tRes.translatedText ? tRes.translatedText : title,
+          description: dRes.success && dRes.translatedText !== undefined ? dRes.translatedText : description,
+          langCode: targetLang,
+        });
+      }
+
       for (let repeatIdx = 0; repeatIdx < repeatCount; repeatIdx++) {
         const repeatLabel = repeatCount > 1 ? ` (copy ${repeatIdx + 1}/${repeatCount})` : '';
 
+      for (const langPass of langPasses) {
+      // Shadow originals with this pass's translated values
+      const title = langPass.title;
+      const description = langPass.description;
+      const defaultLanguage = langPass.langCode;
+      const langSuffix = langPasses.length > 1 ? ` [${langPass.lang}]` : '';
+
       for (const dest of selected) {
-        setUploadProgress(`Publishing to ${dest.name} (${dest.platform})${repeatLabel}...`);
+        setUploadProgress(`Publishing to ${dest.name} (${dest.platform})${repeatLabel}${langSuffix}...`);
+
 
         if (dest.platform === 'facebook' && dest.pageId && dest.pageAccessToken) {
           const res = await publishToFacebook(dest.pageId, dest.pageAccessToken, publicUrl, title, description);
@@ -388,6 +423,10 @@ const UploadPage = () => {
                               title: finalTitle2.substring(0, 100),
                               description: updatedDescription,
                               categoryId: category,
+                              // CRITICAL: YouTube PUT replaces the entire snippet — must resend tags
+                              // and defaultLanguage or they get wiped from the video.
+                              tags: selectedTags.length > 0 ? selectedTags.slice(0, 30) : undefined,
+                              ...(defaultLanguage ? { defaultLanguage } : {}),
                             },
                           }),
                         }
@@ -526,7 +565,17 @@ const UploadPage = () => {
                           await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet`, {
                             method: "PUT",
                             headers: { Authorization: `Bearer ${dest.accessToken}`, "Content-Type": "application/json" },
-                            body: JSON.stringify({ id: shortsRes.videoId, snippet: { title: shortsTitle.substring(0, 100), description: updatedDesc, categoryId: category } }),
+                            body: JSON.stringify({
+                              id: shortsRes.videoId,
+                              snippet: {
+                                title: shortsTitle.substring(0, 100),
+                                description: updatedDesc,
+                                categoryId: category,
+                                // Resend tags + language so YouTube doesn't wipe them on PUT
+                                tags: ([...selectedTags, "Shorts", "Short"]).slice(0, 30),
+                                ...(defaultLanguage ? { defaultLanguage } : {}),
+                              },
+                            }),
                           });
                         } catch (e) { console.warn("Shorts desc update error:", e); }
 
@@ -561,6 +610,7 @@ const UploadPage = () => {
           }
         }
       }
+      } // end langPass loop
       } // end repeatCount loop
 
       setResults(publishResults);
@@ -779,6 +829,63 @@ const UploadPage = () => {
               </div>
             </div>
             <Textarea placeholder="Enter video description" rows={4} value={description} onChange={e => setDescription(e.target.value)} disabled={uploading} />
+          </div>
+
+          {/* Multi-language uploads: 1 extra translated upload per language per channel */}
+          <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl">
+            <div className="flex items-center gap-2 mb-2">
+              <Languages className="w-4 h-4 text-primary" />
+              <span className="text-sm font-semibold text-foreground">Multi-Language Uploads</span>
+              {multiLangTargets.length > 0 && (
+                <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                  +{multiLangTargets.length} extra upload{multiLangTargets.length === 1 ? '' : 's'} per channel
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mb-3">
+              Original uploads first, then 1 translated copy per language selected. Title + description are translated automatically.
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                { code: 'es', label: 'Spanish' }, { code: 'fr', label: 'French' },
+                { code: 'de', label: 'German' }, { code: 'pt', label: 'Portuguese' },
+                { code: 'it', label: 'Italian' }, { code: 'ja', label: 'Japanese' },
+                { code: 'ko', label: 'Korean' }, { code: 'zh', label: 'Chinese' },
+                { code: 'ar', label: 'Arabic' }, { code: 'ru', label: 'Russian' },
+                { code: 'hi', label: 'Hindi' }, { code: 'id', label: 'Indonesian' },
+                { code: 'tr', label: 'Turkish' }, { code: 'vi', label: 'Vietnamese' },
+                { code: 'th', label: 'Thai' }, { code: 'tl', label: 'Filipino' },
+              ].map(l => {
+                const active = multiLangTargets.includes(l.code);
+                return (
+                  <button
+                    key={l.code}
+                    type="button"
+                    disabled={uploading}
+                    onClick={() => setMultiLangTargets(prev =>
+                      prev.includes(l.code) ? prev.filter(c => c !== l.code) : [...prev, l.code]
+                    )}
+                    className={`px-2.5 py-1 rounded-full text-xs border transition-all ${
+                      active
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-background border-border hover:border-primary/50 text-foreground'
+                    } disabled:opacity-50`}
+                  >
+                    {active ? '✓ ' : ''}{l.label}
+                  </button>
+                );
+              })}
+              {multiLangTargets.length > 0 && (
+                <button
+                  type="button"
+                  disabled={uploading}
+                  onClick={() => setMultiLangTargets([])}
+                  className="px-2.5 py-1 rounded-full text-xs border border-destructive/30 text-destructive hover:bg-destructive/10 transition-all disabled:opacity-50"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
