@@ -102,6 +102,10 @@ const UploadPage = () => {
   const [translating, setTranslating] = useState(false);
   const [translateLang, setTranslateLang] = useState('es');
 
+  // Multi-language upload: for each selected language, create a translated copy of the upload.
+  // Empty array = original behavior (single original-language upload only).
+  const [multiLangTargets, setMultiLangTargets] = useState<string[]>([]);
+
   // AI states
   const [aiLoading, setAiLoading] = useState<string | null>(null);
   const [aiSuggestedTags, setAiSuggestedTags] = useState<string[]>([]);
