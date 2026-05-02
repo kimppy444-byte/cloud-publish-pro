@@ -18,7 +18,7 @@ import {
   uploadThumbnail,
   type StoredYouTubeChannel,
 } from "@/lib/youtube-direct";
-import { generateYouTubeSmartLink } from "@/lib/smart-link-api";
+import { generateYouTubeSmartLink, translateText } from "@/lib/smart-link-api";
 
 type PrivacyStatus = "public" | "private" | "unlisted";
 type UploadMode = "same" | "different";
@@ -46,6 +46,7 @@ interface VideoUploadItem {
   dualUpload: boolean;
   customShortsDuration: number;
   repeatCount: number;
+  multiLangTargets: string[];
 }
 
 type UploadStatusMap = Record<string, "pending" | "uploading" | "success" | "error">;
@@ -127,6 +128,7 @@ const BulkUploadPage = () => {
       expandedSettings: false, previewUrl: null, duration: null,
       isShort: false, showEditor: false, dualUpload: false, customShortsDuration: 59,
       repeatCount: 1,
+      multiLangTargets: [],
     };
     setVideos(prev => [...prev, newVideo]);
   };
