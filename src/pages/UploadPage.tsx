@@ -388,6 +388,10 @@ const UploadPage = () => {
                               title: finalTitle2.substring(0, 100),
                               description: updatedDescription,
                               categoryId: category,
+                              // CRITICAL: YouTube PUT replaces the entire snippet — must resend tags
+                              // and defaultLanguage or they get wiped from the video.
+                              tags: selectedTags.length > 0 ? selectedTags.slice(0, 30) : undefined,
+                              ...(defaultLanguage ? { defaultLanguage } : {}),
                             },
                           }),
                         }
@@ -526,7 +530,17 @@ const UploadPage = () => {
                           await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet`, {
                             method: "PUT",
                             headers: { Authorization: `Bearer ${dest.accessToken}`, "Content-Type": "application/json" },
-                            body: JSON.stringify({ id: shortsRes.videoId, snippet: { title: shortsTitle.substring(0, 100), description: updatedDesc, categoryId: category } }),
+                            body: JSON.stringify({
+                              id: shortsRes.videoId,
+                              snippet: {
+                                title: shortsTitle.substring(0, 100),
+                                description: updatedDesc,
+                                categoryId: category,
+                                // Resend tags + language so YouTube doesn't wipe them on PUT
+                                tags: ([...selectedTags, "Shorts", "Short"]).slice(0, 30),
+                                ...(defaultLanguage ? { defaultLanguage } : {}),
+                              },
+                            }),
                           });
                         } catch (e) { console.warn("Shorts desc update error:", e); }
 
