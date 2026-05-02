@@ -530,6 +530,52 @@ const BulkUploadPage = () => {
                   <Input value={video.tags} onChange={e => updateVideo(video.id, { tags: e.target.value })}
                     placeholder="gaming, tutorial, vlog (comma separated)" disabled={isUploading} />
                 </div>
+
+                {/* Multi-language uploads per video */}
+                <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Sparkles className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-xs font-semibold text-foreground">Multi-Language Uploads</span>
+                    {video.multiLangTargets.length > 0 && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                        +{video.multiLangTargets.length} translated copy{video.multiLangTargets.length === 1 ? '' : 's'}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {[
+                      { code: 'es', label: 'ES' }, { code: 'fr', label: 'FR' },
+                      { code: 'de', label: 'DE' }, { code: 'pt', label: 'PT' },
+                      { code: 'it', label: 'IT' }, { code: 'ja', label: 'JA' },
+                      { code: 'ko', label: 'KO' }, { code: 'zh', label: 'ZH' },
+                      { code: 'ar', label: 'AR' }, { code: 'ru', label: 'RU' },
+                      { code: 'hi', label: 'HI' }, { code: 'id', label: 'ID' },
+                      { code: 'tr', label: 'TR' }, { code: 'vi', label: 'VI' },
+                      { code: 'th', label: 'TH' }, { code: 'tl', label: 'TL' },
+                    ].map(l => {
+                      const active = video.multiLangTargets.includes(l.code);
+                      return (
+                        <button
+                          key={l.code}
+                          type="button"
+                          disabled={isUploading}
+                          onClick={() => updateVideo(video.id, {
+                            multiLangTargets: active
+                              ? video.multiLangTargets.filter(c => c !== l.code)
+                              : [...video.multiLangTargets, l.code],
+                          })}
+                          className={`px-2 py-0.5 rounded-full text-[10px] border transition-all ${
+                            active
+                              ? 'bg-primary text-primary-foreground border-primary'
+                              : 'bg-background border-border hover:border-primary/50'
+                          } disabled:opacity-50`}
+                        >
+                          {l.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
 
               {/* Channel selector (different mode) */}
