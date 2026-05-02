@@ -610,6 +610,7 @@ const UploadPage = () => {
           }
         }
       }
+      } // end langPass loop
       } // end repeatCount loop
 
       setResults(publishResults);
