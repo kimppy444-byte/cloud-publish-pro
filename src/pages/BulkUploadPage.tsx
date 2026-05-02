@@ -171,19 +171,46 @@ const BulkUploadPage = () => {
       setUploadStatus(p => ({ ...p, [video.id]: "uploading" }));
       const parsedTags = video.tags.split(",").map(t => t.trim()).filter(Boolean).slice(0, 30);
 
+      // Build language passes: original first, then 1 translated copy per selected language.
+      const langPasses: Array<{ lang: string; title: string; description: string; langCode: string }> = [
+        { lang: 'Original', title: video.title, description: video.description, langCode: 'en' },
+      ];
+      for (const targetLang of (video.multiLangTargets || [])) {
+        if (targetLang === 'en') continue;
+        setStatusMessages(p => ({ ...p, [video.id]: `Translating to ${targetLang.toUpperCase()}...` }));
+        const [tRes, dRes] = await Promise.all([
+          translateText(video.title, targetLang, 'en'),
+          video.description ? translateText(video.description, targetLang, 'en') : Promise.resolve({ success: true, translatedText: '' } as any),
+        ]);
+        langPasses.push({
+          lang: targetLang.toUpperCase(),
+          title: tRes.success && tRes.translatedText ? tRes.translatedText : video.title,
+          description: dRes.success && dRes.translatedText !== undefined ? dRes.translatedText : video.description,
+          langCode: targetLang,
+        });
+      }
+
+      const totalUnits = totalRepeats * langPasses.length * targetChannelIds.length;
+      let unitIdx = 0;
+
       for (let repeatIdx = 0; repeatIdx < totalRepeats; repeatIdx++) {
         const repeatLabel = totalRepeats > 1 ? ` (copy ${repeatIdx + 1}/${totalRepeats})` : '';
+
+      for (const langPass of langPasses) {
+        const langSuffix = langPasses.length > 1 ? ` [${langPass.lang}]` : '';
 
       for (let i = 0; i < targetChannelIds.length; i++) {
         const chId = targetChannelIds[i];
         const channelData = channelTokenMap[chId];
         if (!channelData) continue;
 
-        setStatusMessages(p => ({ ...p, [video.id]: `Uploading to ${channelData.channelTitle || "channel"} (${i + 1}/${targetChannelIds.length})…` }));
+        setStatusMessages(p => ({ ...p, [video.id]: `Uploading to ${channelData.channelTitle || "channel"}${langSuffix}${repeatLabel} (${unitIdx + 1}/${totalUnits})…` }));
 
         const isShort = video.isShort && (video.duration || 0) <= 60;
-        const title = isShort && !video.title.includes("#Shorts") ? `${video.title} #Shorts` : video.title;
-        const description = isShort && !video.description.includes("#Shorts") ? `${video.description}\n\n#Shorts` : video.description;
+        const baseTitle = langPass.title;
+        const baseDesc = langPass.description;
+        const title = isShort && !baseTitle.includes("#Shorts") ? `${baseTitle} #Shorts` : baseTitle;
+        const description = isShort && !baseDesc.includes("#Shorts") ? `${baseDesc}\n\n#Shorts` : baseDesc;
         const tags = isShort ? [...parsedTags, "Shorts", "Short"].filter((t, i, s) => s.indexOf(t) === i) : parsedTags;
 
         const result = await uploadVideoToYouTube(
@@ -196,8 +223,9 @@ const BulkUploadPage = () => {
             allowComments: video.allowComments,
             allowRatings: video.allowRatings,
             scheduled: video.scheduled && video.scheduleTime ? video.scheduleTime : undefined,
+            defaultLanguage: langPass.langCode,
           },
-          (pct) => setUploadProgress(p => ({ ...p, [video.id]: Math.round((i / targetChannelIds.length) * 100 + pct / targetChannelIds.length) }))
+          (pct) => setUploadProgress(p => ({ ...p, [video.id]: Math.round((unitIdx / totalUnits) * 100 + pct / totalUnits) }))
         );
 
         if (!result.success) throw new Error(result.error || "Upload failed");
@@ -222,12 +250,14 @@ const BulkUploadPage = () => {
           }
         }
 
-        setUploadProgress(p => ({ ...p, [video.id]: Math.round(((i + 1) / targetChannelIds.length) * 100) }));
+        unitIdx++;
+        setUploadProgress(p => ({ ...p, [video.id]: Math.round((unitIdx / totalUnits) * 100) }));
       }
+      } // end langPass loop
       } // end repeatCount loop
 
       setUploadStatus(p => ({ ...p, [video.id]: "success" }));
-      setStatusMessages(p => ({ ...p, [video.id]: `Uploaded to ${targetChannelIds.length} channel(s)` }));
+      setStatusMessages(p => ({ ...p, [video.id]: `Uploaded ${totalUnits} time(s) across ${targetChannelIds.length} channel(s)` }));
       return true;
     } catch (err: any) {
       setUploadStatus(p => ({ ...p, [video.id]: "error" }));
