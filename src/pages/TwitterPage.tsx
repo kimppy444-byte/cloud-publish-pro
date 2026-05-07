@@ -266,82 +266,10 @@ const TwitterPage = () => {
         If you attach an image or video, we copy it to your clipboard — paste with Ctrl/Cmd+V in the compose window. Free, no API quota.
       </div>
 
-      {/* Accounts */}
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-xl shadow-card border border-border/50">
-        <div className="p-5 border-b border-border flex items-center justify-between">
-          <h2 className="font-display font-semibold text-foreground text-lg">Connected Accounts</h2>
-          <Button variant="outline" size="sm" onClick={loadAccounts}>
-            <RefreshCw className="w-4 h-4 mr-1" /> Refresh
-          </Button>
-        </div>
-        <div className="p-4">
-          {accounts.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">No X accounts configured. Add your credentials in backend secrets.</p>
-          ) : (
-            <>
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs text-muted-foreground">{selectedAccounts.length} of {accounts.filter(a => a.verified).length} selected</span>
-                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={selectAllAccounts}>
-                  {selectedAccounts.length === accounts.filter(a => a.verified).length ? 'Deselect All' : 'Select All'}
-                </Button>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {accounts.map(acc => (
-                  <div key={acc.index} className={`p-3 rounded-lg border transition-colors cursor-pointer ${
-                    selectedAccounts.includes(acc.index) ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30"
-                  } ${!acc.verified && !acc.loading ? 'opacity-50' : ''}`}
-                    onClick={() => acc.verified && acc.index !== 0 && toggleAccount(acc.index)}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <Checkbox
-                          checked={selectedAccounts.includes(acc.index)}
-                          onCheckedChange={() => acc.verified && acc.index !== 0 && toggleAccount(acc.index)}
-                          disabled={!acc.verified || acc.loading || acc.index === 0}
-                          className="flex-shrink-0"
-                        />
-                        <div className="w-8 h-8 rounded-full bg-foreground text-background flex items-center justify-center text-xs font-bold flex-shrink-0">
-                          {acc.index + 1}
-                        </div>
-                        <div className="min-w-0">
-                          {acc.loading ? (
-                            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                          ) : acc.verified ? (
-                            <>
-                              <p className="text-sm font-medium text-foreground truncate">@{acc.username}</p>
-                              <p className="text-xs text-muted-foreground truncate">{acc.name}</p>
-                            </>
-                          ) : (
-                            <p className="text-xs text-destructive">Not verified</p>
-                          )}
-                        </div>
-                      </div>
-                      {!acc.loading && (
-                        acc.verified
-                          ? <CheckCircle2 className="w-4 h-4 text-success flex-shrink-0" />
-                          : <XCircle className="w-4 h-4 text-destructive flex-shrink-0" />
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      </motion.div>
-
       {/* Upload Form */}
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
         className="bg-card rounded-xl shadow-card border border-border/50 p-6 space-y-5">
-        <h2 className="font-display font-semibold text-foreground text-lg">Post to X</h2>
-
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>Posting to <strong className="text-foreground">{selectedAccounts.length}</strong> account{selectedAccounts.length !== 1 ? 's' : ''}</span>
-          {selectedAccounts.length > 0 && (
-            <span className="text-xs">
-              ({selectedAccounts.map(i => accounts.find(a => a.index === i)?.username ? `@${accounts.find(a => a.index === i)?.username}` : `#${i+1}`).join(', ')})
-            </span>
-          )}
-        </div>
+        <h2 className="font-display font-semibold text-foreground text-lg">Compose Tweet</h2>
 
         <div>
           <label className="text-sm font-medium text-foreground block mb-1.5">Tweet Text</label>
