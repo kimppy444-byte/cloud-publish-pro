@@ -576,8 +576,9 @@ const UploadPage = () => {
                       }, true);
 
                       if (slRes.success && slRes.smartLink) {
-                        const headerText = defaults.socialUnlockHeader ?? "🎁 UNLOCK EXCLUSIVE CONTENT";
-                        const bodyText = defaults.socialUnlockBody ?? "🎁 Unlock exclusive content!\n\nComplete the required actions to access:";
+                        const rawHeader = defaults.socialUnlockHeader ?? "🎁 UNLOCK EXCLUSIVE CONTENT";
+                        const rawBody = defaults.socialUnlockBody ?? "🎁 Unlock exclusive content!\n\nComplete the required actions to access:";
+                        const { header: headerText, body: bodyText } = await getTranslatedSmartLink(destLang, rawHeader, rawBody);
 
                         // Update Shorts description with smart link
                         try {
