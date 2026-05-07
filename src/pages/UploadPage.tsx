@@ -310,6 +310,24 @@ const UploadPage = () => {
         return result;
       };
 
+      // Translate smart-link header/body text per language (cached).
+      const smartLinkCache: Record<string, { header: string; body: string }> = {};
+      const getTranslatedSmartLink = async (targetLang: string, header: string, body: string) => {
+        if (!targetLang || targetLang === originalLangCode) return { header, body };
+        const cacheKey = `${targetLang}|${header}|${body}`;
+        if (smartLinkCache[cacheKey]) return smartLinkCache[cacheKey];
+        const [hRes, bRes] = await Promise.all([
+          header ? translateText(header, targetLang, originalLangCode) : Promise.resolve({ success: true, translatedText: '' } as any),
+          body ? translateText(body, targetLang, originalLangCode) : Promise.resolve({ success: true, translatedText: '' } as any),
+        ]);
+        const out = {
+          header: hRes.success && hRes.translatedText ? hRes.translatedText : header,
+          body: bRes.success && bRes.translatedText ? bRes.translatedText : body,
+        };
+        smartLinkCache[cacheKey] = out;
+        return out;
+      };
+
       for (let repeatIdx = 0; repeatIdx < repeatCount; repeatIdx++) {
         const repeatLabel = repeatCount > 1 ? ` (copy ${repeatIdx + 1}/${repeatCount})` : '';
 
