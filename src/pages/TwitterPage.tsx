@@ -137,14 +137,19 @@ const TwitterPage = () => {
     }
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (!file.type.startsWith('video/')) {
-        toast.error("Please select a video file");
-        return;
+    if (!file) return;
+    if (file.type.startsWith("image/")) {
+      const compressed = await compressImage(file, "twitter");
+      if (compressed.size !== file.size) {
+        toast.success(`Compressed: ${(file.size/1024/1024).toFixed(1)}MB → ${(compressed.size/1024/1024).toFixed(1)}MB`);
       }
+      setSelectedFile(compressed);
+    } else if (file.type.startsWith("video/")) {
       setSelectedFile(file);
+    } else {
+      toast.error("Please select a video or image file");
     }
   };
 
@@ -165,54 +170,30 @@ const TwitterPage = () => {
 
   const handleUpload = async () => {
     if (!tweetText && !selectedFile) {
-      toast.error("Add tweet text or select a video");
-      return;
-    }
-    if (selectedAccounts.length === 0) {
-      toast.error("Select at least one account");
+      toast.error("Add tweet text or select a file");
       return;
     }
 
+    // Manual share via X Web Intent. Free, no API needed.
+    // If a file is attached, copy it to clipboard so user can paste it in compose window.
     setIsUploading(true);
-    let filePath = '';
-
     try {
       if (selectedFile) {
-        setUploadProgress("Uploading video to storage...");
-        filePath = `x-uploads/${Date.now()}_${selectedFile.name}`;
-        const { error: uploadError } = await supabase.storage.from('videos').upload(filePath, selectedFile);
-        if (uploadError) throw new Error(`Storage upload failed: ${uploadError.message}`);
-      }
-
-      let successCount = 0;
-      let failCount = 0;
-
-      for (const idx of selectedAccounts) {
-        const accLabel = accounts.find(a => a.index === idx)?.username || `Account ${idx + 1}`;
-        if (selectedFile) {
-          setUploadProgress(`Posting video to @${accLabel}...`);
-          const res = await uploadAndTweet(idx, filePath, tweetText);
-          if (res.success) successCount++;
-          else { failCount++; toast.error(`@${accLabel}: ${res.error || "Failed"}`); }
-        } else {
-          setUploadProgress(`Posting tweet to @${accLabel}...`);
-          const res = await tweetTextOnly(idx, tweetText);
-          if (res.success) successCount++;
-          else { failCount++; toast.error(`@${accLabel}: ${res.error || "Failed"}`); }
+        try {
+          // @ts-ignore — ClipboardItem typing
+          const item = new ClipboardItem({ [selectedFile.type]: selectedFile });
+          // @ts-ignore
+          await navigator.clipboard.write([item]);
+          toast.success("File copied to clipboard — paste (Ctrl/Cmd+V) in the X compose window");
+        } catch {
+          toast.warning("Couldn't copy file to clipboard. You'll need to attach the file manually in X.");
         }
       }
-
-      if (successCount > 0) {
-        toast.success(`Posted to ${successCount} account${successCount > 1 ? 's' : ''}!`);
-        setTweetText("");
-        setSelectedFile(null);
-        if (fileInputRef.current) fileInputRef.current.value = "";
-      }
-      if (failCount > 0 && successCount === 0) {
-        toast.error("All posts failed");
-      }
+      const intentUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
+      window.open(intentUrl, "_blank", "noopener,noreferrer");
+      toast.success("Opened X compose. Click 'Post' to publish.");
     } catch (err: any) {
-      toast.error(err.message || "Upload failed");
+      toast.error(err.message || "Failed to open X");
     } finally {
       setIsUploading(false);
       setUploadProgress("");
