@@ -9,9 +9,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { toast } from "sonner";
-import { getXAccountCount, verifyXAccount, uploadAndTweet, tweetTextOnly } from "@/lib/x-api";
+import { getXAccountCount, verifyXAccount } from "@/lib/x-api";
 import { suggestHashtags, suggestTweet, suggestBestTimes } from "@/lib/ai-suggest";
 import { supabase } from "@/integrations/supabase/client";
+import { compressImage } from "@/lib/image-compressor";
 
 interface AccountInfo {
   index: number;
