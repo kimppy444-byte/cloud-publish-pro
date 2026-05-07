@@ -1,26 +1,11 @@
 import { motion } from "framer-motion";
-import { useState, useEffect, useRef } from "react";
-import { Upload, Loader2, CheckCircle2, XCircle, Video, RefreshCw, Send, Sparkles, Hash, Clock, Type, CalendarClock, Trash2 } from "lucide-react";
-import { format } from "date-fns";
+import { useState, useRef } from "react";
+import { Upload, Loader2, Video, Send, Sparkles, Hash, Clock, Type } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
 import { toast } from "sonner";
-import { getXAccountCount, verifyXAccount } from "@/lib/x-api";
 import { suggestHashtags, suggestTweet, suggestBestTimes } from "@/lib/ai-suggest";
-import { supabase } from "@/integrations/supabase/client";
 import { compressImage } from "@/lib/image-compressor";
-
-interface AccountInfo {
-  index: number;
-  verified: boolean;
-  username?: string;
-  name?: string;
-  loading: boolean;
-}
 
 const XIcon = () => (
   <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor">
@@ -29,9 +14,6 @@ const XIcon = () => (
 );
 
 const TwitterPage = () => {
-  const [accountCount, setAccountCount] = useState(0);
-  const [accounts, setAccounts] = useState<AccountInfo[]>([]);
-  const [selectedAccounts, setSelectedAccounts] = useState<number[]>([]);
   const [tweetText, setTweetText] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -43,73 +25,6 @@ const TwitterPage = () => {
   const [suggestedHashtags, setSuggestedHashtags] = useState<string[]>([]);
   const [suggestedTweets, setSuggestedTweets] = useState<string[]>([]);
   const [bestTimes, setBestTimes] = useState<any[]>([]);
-
-  // Schedule states
-  const [scheduleMode, setScheduleMode] = useState(false);
-  const [scheduleDate, setScheduleDate] = useState<Date | undefined>(undefined);
-  const [scheduleTime, setScheduleTime] = useState("12:00");
-  const [scheduledPosts, setScheduledPosts] = useState<any[]>([]);
-  const [loadingScheduled, setLoadingScheduled] = useState(false);
-
-  useEffect(() => {
-    loadAccounts();
-    loadScheduledPosts();
-  }, []);
-
-  const loadScheduledPosts = async () => {
-    setLoadingScheduled(true);
-    const { data } = await supabase
-      .from('scheduled_posts')
-      .select('*')
-      .order('scheduled_at', { ascending: true });
-    setScheduledPosts(data || []);
-    setLoadingScheduled(false);
-  };
-
-  const handleSchedulePost = async () => {
-    if (!tweetText && !selectedFile) { toast.error("Add tweet text or select a video"); return; }
-    if (selectedAccounts.length === 0) { toast.error("Select at least one account"); return; }
-    if (!scheduleDate) { toast.error("Pick a date"); return; }
-
-    const [hours, mins] = scheduleTime.split(':').map(Number);
-    const scheduledAt = new Date(scheduleDate);
-    scheduledAt.setHours(hours, mins, 0, 0);
-
-    if (scheduledAt <= new Date()) { toast.error("Scheduled time must be in the future"); return; }
-
-    let filePath = '';
-    if (selectedFile) {
-      toast.loading("Uploading video for scheduling...");
-      filePath = `x-uploads/${Date.now()}_${selectedFile.name}`;
-      const { error } = await supabase.storage.from('videos').upload(filePath, selectedFile);
-      toast.dismiss();
-      if (error) { toast.error(`Upload failed: ${error.message}`); return; }
-    }
-
-    const { error } = await supabase.from('scheduled_posts').insert({
-      platform: 'twitter',
-      account_indices: selectedAccounts,
-      tweet_text: tweetText || null,
-      video_path: filePath || null,
-      scheduled_at: scheduledAt.toISOString(),
-    });
-
-    if (error) { toast.error(`Failed to schedule: ${error.message}`); return; }
-
-    toast.success(`Scheduled for ${format(scheduledAt, "PPP 'at' p")}`);
-    setTweetText("");
-    setSelectedFile(null);
-    setScheduleDate(undefined);
-    setScheduleMode(false);
-    if (fileInputRef.current) fileInputRef.current.value = "";
-    loadScheduledPosts();
-  };
-
-  const deleteScheduledPost = async (id: string) => {
-    await supabase.from('scheduled_posts').delete().eq('id', id);
-    toast.success("Scheduled post deleted");
-    loadScheduledPosts();
-  };
 
   const loadAccounts = async () => {
     const res = await getXAccountCount();
