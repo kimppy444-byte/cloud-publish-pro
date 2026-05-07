@@ -444,12 +444,12 @@ const TwitterPage = () => {
             ) : (
               <div className="space-y-2">
                 <Upload className="w-8 h-8 text-muted-foreground mx-auto" />
-                <p className="text-sm text-muted-foreground">Click to select a video</p>
-                <p className="text-xs text-muted-foreground">MP4 recommended, max 512MB</p>
+                <p className="text-sm text-muted-foreground">Click to select an image or video</p>
+                <p className="text-xs text-muted-foreground">Images auto-compressed to fit X's 5 MB limit</p>
               </div>
             )}
           </div>
-          <input ref={fileInputRef} type="file" accept="video/*" onChange={handleFileSelect} className="hidden" />
+          <input ref={fileInputRef} type="file" accept="image/*,video/*" onChange={handleFileSelect} className="hidden" />
         </div>
 
         {uploadProgress && (
