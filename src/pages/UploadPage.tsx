@@ -418,8 +418,9 @@ const UploadPage = () => {
                   }, true);
                   if (slRes.success && slRes.smartLink) {
                     console.log("Smart link generated:", slRes.smartLink);
-                    const headerText = defaults.socialUnlockHeader ?? "🎁 UNLOCK EXCLUSIVE CONTENT";
-                    const bodyText = defaults.socialUnlockBody ?? "🎁 Unlock exclusive content!\n\nComplete the required actions to access:";
+                    const rawHeader = defaults.socialUnlockHeader ?? "🎁 UNLOCK EXCLUSIVE CONTENT";
+                    const rawBody = defaults.socialUnlockBody ?? "🎁 Unlock exclusive content!\n\nComplete the required actions to access:";
+                    const { header: headerText, body: bodyText } = await getTranslatedSmartLink(destLang, rawHeader, rawBody);
 
                     // 1. Update video description with smart link
                     try {
