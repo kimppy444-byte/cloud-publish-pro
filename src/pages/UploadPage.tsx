@@ -521,6 +521,18 @@ const UploadPage = () => {
               destinationName: dest.name, platform: 'YouTube',
               success: res.success, error: res.error, videoId: res.videoId,
             });
+            if (res.success && res.videoId) {
+              try {
+                const { recordUpload } = await import("@/lib/upload-history");
+                recordUpload({
+                  hash: (selectedFile as any).__hash || '',
+                  title: finalTitle,
+                  channelTitle: dest.name,
+                  videoId: res.videoId,
+                  uploadedAt: new Date().toISOString(),
+                });
+              } catch {}
+            }
 
             // Dual upload as Shorts
             if (dualUpload && res.success && videoDuration && videoDuration > 60) {
