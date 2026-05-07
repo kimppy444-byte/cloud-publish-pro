@@ -387,41 +387,6 @@ const TwitterPage = () => {
           </div>
         )}
 
-        {/* Schedule toggle */}
-        <div className="flex items-center gap-3 p-3 rounded-lg border border-border bg-background">
-          <Checkbox checked={scheduleMode} onCheckedChange={(c) => setScheduleMode(!!c)} />
-          <CalendarClock className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm text-foreground">Schedule for later</span>
-        </div>
-
-        {scheduleMode && (
-          <div className="flex flex-wrap items-end gap-3 p-3 rounded-lg border border-primary/20 bg-primary/5">
-            <div>
-              <label className="text-xs font-medium text-foreground block mb-1">Date</label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="w-[160px] justify-start text-left">
-                    {scheduleDate ? format(scheduleDate, "PPP") : "Pick date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={scheduleDate}
-                    onSelect={setScheduleDate}
-                    disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))}
-                    className="p-3 pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-foreground block mb-1">Time</label>
-              <Input type="time" value={scheduleTime} onChange={e => setScheduleTime(e.target.value)} className="w-[130px] h-9" />
-            </div>
-          </div>
-        )}
-
         <div className="flex gap-2">
           <Button
             onClick={handleUpload}
