@@ -286,40 +286,41 @@ const UploadPage = () => {
       const selected = destinations.filter(d => selectedAccounts.includes(d.id));
       const tags = selectedTags.join(',');
 
-      // Build the language list to upload for. Empty multiLangTargets => single pass with originals.
-      const langPasses: Array<{ lang: string; title: string; description: string; langCode: string }> = [];
+      // Per-channel language: translate title/description per destination's assigned language.
+      // Cache translations to avoid repeating for the same target language.
       const originalLangCode = defaultLanguage || 'en';
-      langPasses.push({ lang: 'Original', title, description, langCode: originalLangCode });
+      const translationCache: Record<string, { title: string; description: string }> = {
+        [originalLangCode]: { title, description },
+      };
 
-      for (const targetLang of multiLangTargets) {
-        if (targetLang === originalLangCode) continue; // skip duplicate of original
+      const getTranslated = async (targetLang: string) => {
+        if (!targetLang || targetLang === originalLangCode) return translationCache[originalLangCode];
+        if (translationCache[targetLang]) return translationCache[targetLang];
         setUploadProgress(`Translating to ${targetLang.toUpperCase()}...`);
         const [tRes, dRes] = await Promise.all([
           translateText(title, targetLang, originalLangCode),
           description ? translateText(description, targetLang, originalLangCode) : Promise.resolve({ success: true, translatedText: '' } as any),
         ]);
-        if (!tRes.success) {
-          toast.warning(`Title translation to ${targetLang} failed: ${tRes.error}. Using original.`);
-        }
-        langPasses.push({
-          lang: targetLang.toUpperCase(),
+        if (!tRes.success) toast.warning(`Title translation to ${targetLang} failed: ${tRes.error}. Using original.`);
+        const result = {
           title: tRes.success && tRes.translatedText ? tRes.translatedText : title,
           description: dRes.success && dRes.translatedText !== undefined ? dRes.translatedText : description,
-          langCode: targetLang,
-        });
-      }
+        };
+        translationCache[targetLang] = result;
+        return result;
+      };
 
       for (let repeatIdx = 0; repeatIdx < repeatCount; repeatIdx++) {
         const repeatLabel = repeatCount > 1 ? ` (copy ${repeatIdx + 1}/${repeatCount})` : '';
 
-      for (const langPass of langPasses) {
-      // Shadow originals with this pass's translated values
-      const title = langPass.title;
-      const description = langPass.description;
-      const defaultLanguage = langPass.langCode;
-      const langSuffix = langPasses.length > 1 ? ` [${langPass.lang}]` : '';
-
       for (const dest of selected) {
+        // Resolve this destination's language (only meaningful for YouTube; others get original).
+        const destLang = (dest.platform === 'youtube' ? channelLangs[dest.id] : '') || originalLangCode;
+        const translated = await getTranslated(destLang);
+        const title = translated.title;
+        const description = translated.description;
+        const defaultLanguage = destLang;
+        const langSuffix = destLang !== originalLangCode ? ` [${destLang.toUpperCase()}]` : '';
         setUploadProgress(`Publishing to ${dest.name} (${dest.platform})${repeatLabel}${langSuffix}...`);
 
 
