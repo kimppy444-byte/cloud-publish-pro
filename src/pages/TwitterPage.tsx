@@ -399,66 +399,6 @@ const TwitterPage = () => {
         </div>
       </motion.div>
 
-      {/* Scheduled Posts */}
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-        className="bg-card rounded-xl shadow-card border border-border/50">
-        <div className="p-5 border-b border-border flex items-center justify-between">
-          <h2 className="font-display font-semibold text-foreground text-lg flex items-center gap-2">
-            <CalendarClock className="w-5 h-5" /> Scheduled Posts
-          </h2>
-          <Button variant="outline" size="sm" onClick={loadScheduledPosts}>
-            <RefreshCw className="w-4 h-4 mr-1" /> Refresh
-          </Button>
-        </div>
-        <div className="p-4">
-          {loadingScheduled ? (
-            <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
-          ) : scheduledPosts.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">No scheduled posts yet.</p>
-          ) : (
-            <div className="space-y-3">
-              {scheduledPosts.map(post => (
-                <div key={post.id} className="flex items-start justify-between p-3 rounded-lg border border-border bg-background">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                        post.status === 'pending' ? 'bg-warning/10 text-warning' :
-                        post.status === 'completed' ? 'bg-success/10 text-success' :
-                        post.status === 'processing' ? 'bg-primary/10 text-primary' :
-                        'bg-destructive/10 text-destructive'
-                      }`}>
-                        {post.status}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {format(new Date(post.scheduled_at), "PPP 'at' p")}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        → {(post.account_indices || []).length} account{(post.account_indices || []).length !== 1 ? 's' : ''}
-                      </span>
-                    </div>
-                    {post.tweet_text && <p className="text-sm text-foreground truncate">{post.tweet_text}</p>}
-                    {post.video_path && <p className="text-xs text-muted-foreground">📹 Video attached</p>}
-                    {post.results && (
-                      <div className="mt-1 space-y-0.5">
-                        {(post.results as any[]).map((r: any, i: number) => (
-                          <p key={i} className={`text-xs ${r.success ? 'text-success' : 'text-destructive'}`}>
-                            Account {(r.accountIndex || 0) + 1}: {r.success ? '✓ Posted' : `✗ ${r.error}`}
-                          </p>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  {post.status === 'pending' && (
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => deleteScheduledPost(post.id)}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </motion.div>
     </div>
   );
 };
