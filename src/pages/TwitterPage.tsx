@@ -255,11 +255,16 @@ const TwitterPage = () => {
             <XIcon />
           </div>
           <div>
-            <h1 className="text-3xl font-display font-bold text-foreground">X (Twitter)</h1>
-            <p className="text-muted-foreground">Upload videos and post tweets</p>
+            <h1 className="text-3xl font-display font-bold text-foreground">X (Twitter) — Manual Share</h1>
+            <p className="text-muted-foreground">X API got expensive — we now open the X compose window so posting stays free</p>
           </div>
         </div>
       </motion.div>
+
+      <div className="rounded-xl border border-warning/30 bg-warning/5 p-4 text-sm text-foreground">
+        <strong>How it works:</strong> Click <em>Open X to Post</em> and the X compose window opens with your text pre-filled.
+        If you attach an image or video, we copy it to your clipboard — paste with Ctrl/Cmd+V in the compose window. Free, no API quota.
+      </div>
 
       {/* Accounts */}
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-xl shadow-card border border-border/50">
