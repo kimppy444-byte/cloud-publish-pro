@@ -102,9 +102,9 @@ const UploadPage = () => {
   const [translating, setTranslating] = useState(false);
   const [translateLang, setTranslateLang] = useState('es');
 
-  // Multi-language upload: for each selected language, create a translated copy of the upload.
-  // Empty array = original behavior (single original-language upload only).
-  const [multiLangTargets, setMultiLangTargets] = useState<string[]>([]);
+  // Per-channel language assignment. Key = destination id, value = lang code ('' or absent = original/English).
+  // One upload per channel, in its assigned language.
+  const [channelLangs, setChannelLangs] = useState<Record<string, string>>({});
 
   // AI states
   const [aiLoading, setAiLoading] = useState<string | null>(null);
