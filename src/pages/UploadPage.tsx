@@ -1027,8 +1027,8 @@ const UploadPage = () => {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {destinations.map((dest) => (
-              <label key={dest.id}
-                className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+              <div key={dest.id}
+                className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
                   selectedAccounts.includes(dest.id) ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30"
                 }`}>
                 <Checkbox checked={selectedAccounts.includes(dest.id)} onCheckedChange={() => toggleAccount(dest.id)} disabled={uploading} />
@@ -1041,11 +1041,38 @@ const UploadPage = () => {
                 ) : (
                   <Facebook className="w-4 h-4 text-facebook" />
                 )}
-                <div className="flex flex-col min-w-0">
+                <div className="flex flex-col min-w-0 flex-1 cursor-pointer" onClick={() => !uploading && toggleAccount(dest.id)}>
                   <span className="text-sm font-medium text-foreground truncate">{dest.name}</span>
                   <span className="text-xs text-muted-foreground capitalize">{dest.platform}</span>
                 </div>
-              </label>
+                {dest.platform === 'youtube' && selectedAccounts.includes(dest.id) && (
+                  <select
+                    value={channelLangs[dest.id] || ''}
+                    onChange={e => setChannelLangs(prev => ({ ...prev, [dest.id]: e.target.value }))}
+                    disabled={uploading}
+                    title="Upload language for this channel"
+                    className="text-xs border border-border rounded px-1.5 py-1 bg-background text-foreground"
+                  >
+                    <option value="">English (original)</option>
+                    <option value="es">Spanish</option>
+                    <option value="fr">French</option>
+                    <option value="de">German</option>
+                    <option value="pt">Portuguese</option>
+                    <option value="it">Italian</option>
+                    <option value="ja">Japanese</option>
+                    <option value="ko">Korean</option>
+                    <option value="zh">Chinese</option>
+                    <option value="ar">Arabic</option>
+                    <option value="ru">Russian</option>
+                    <option value="hi">Hindi</option>
+                    <option value="id">Indonesian</option>
+                    <option value="tr">Turkish</option>
+                    <option value="vi">Vietnamese</option>
+                    <option value="th">Thai</option>
+                    <option value="tl">Filipino</option>
+                  </select>
+                )}
+              </div>
             ))}
           </div>
         )}
