@@ -262,6 +262,21 @@ const UploadPage = () => {
     if (selectedAccounts.length === 0) { toast.error("Please select at least one destination."); return; }
     if (!title.trim()) { toast.error("Please enter a video title."); return; }
 
+    // Duplicate-upload guard
+    try {
+      const { fileHash } = await import("@/lib/image-compressor");
+      const { findDuplicate } = await import("@/lib/upload-history");
+      const hash = await fileHash(selectedFile);
+      const dup = findDuplicate(hash);
+      if (dup) {
+        const ok = window.confirm(
+          `⚠️ This exact file was already uploaded as "${dup.title}" to ${dup.channelTitle} on ${new Date(dup.uploadedAt).toLocaleString()}.\n\nUpload again anyway?`
+        );
+        if (!ok) return;
+      }
+      (selectedFile as any).__hash = hash;
+    } catch {}
+
     setUploading(true);
     setResults([]);
     const publishResults: PublishResult[] = [];
@@ -310,6 +325,24 @@ const UploadPage = () => {
         return result;
       };
 
+      // Translate smart-link header/body text per language (cached).
+      const smartLinkCache: Record<string, { header: string; body: string }> = {};
+      const getTranslatedSmartLink = async (targetLang: string, header: string, body: string) => {
+        if (!targetLang || targetLang === originalLangCode) return { header, body };
+        const cacheKey = `${targetLang}|${header}|${body}`;
+        if (smartLinkCache[cacheKey]) return smartLinkCache[cacheKey];
+        const [hRes, bRes] = await Promise.all([
+          header ? translateText(header, targetLang, originalLangCode) : Promise.resolve({ success: true, translatedText: '' } as any),
+          body ? translateText(body, targetLang, originalLangCode) : Promise.resolve({ success: true, translatedText: '' } as any),
+        ]);
+        const out = {
+          header: hRes.success && hRes.translatedText ? hRes.translatedText : header,
+          body: bRes.success && bRes.translatedText ? bRes.translatedText : body,
+        };
+        smartLinkCache[cacheKey] = out;
+        return out;
+      };
+
       for (let repeatIdx = 0; repeatIdx < repeatCount; repeatIdx++) {
         const repeatLabel = repeatCount > 1 ? ` (copy ${repeatIdx + 1}/${repeatCount})` : '';
 
@@ -349,7 +382,8 @@ const UploadPage = () => {
                 }, true);
 
                 if (slRes.success && slRes.smartLink) {
-                  const bodyText = defaults.socialUnlockBody ?? "🎁 Unlock exclusive content!\n\nComplete the required actions to access:";
+                  const rawBody = defaults.socialUnlockBody ?? "🎁 Unlock exclusive content!\n\nComplete the required actions to access:";
+                  const { body: bodyText } = await getTranslatedSmartLink(destLang, '', rawBody);
                   const commentText = `${bodyText}\n${slRes.smartLink}`;
                   setUploadProgress(`Posting smart link comment on ${dest.name}...`);
                   const { postInstagramComment } = await import("@/lib/facebook-api");
@@ -399,8 +433,9 @@ const UploadPage = () => {
                   }, true);
                   if (slRes.success && slRes.smartLink) {
                     console.log("Smart link generated:", slRes.smartLink);
-                    const headerText = defaults.socialUnlockHeader ?? "🎁 UNLOCK EXCLUSIVE CONTENT";
-                    const bodyText = defaults.socialUnlockBody ?? "🎁 Unlock exclusive content!\n\nComplete the required actions to access:";
+                    const rawHeader = defaults.socialUnlockHeader ?? "🎁 UNLOCK EXCLUSIVE CONTENT";
+                    const rawBody = defaults.socialUnlockBody ?? "🎁 Unlock exclusive content!\n\nComplete the required actions to access:";
+                    const { header: headerText, body: bodyText } = await getTranslatedSmartLink(destLang, rawHeader, rawBody);
 
                     // 1. Update video description with smart link
                     try {
@@ -486,6 +521,18 @@ const UploadPage = () => {
               destinationName: dest.name, platform: 'YouTube',
               success: res.success, error: res.error, videoId: res.videoId,
             });
+            if (res.success && res.videoId) {
+              try {
+                const { recordUpload } = await import("@/lib/upload-history");
+                recordUpload({
+                  hash: (selectedFile as any).__hash || '',
+                  title: finalTitle,
+                  channelTitle: dest.name,
+                  videoId: res.videoId,
+                  uploadedAt: new Date().toISOString(),
+                });
+              } catch {}
+            }
 
             // Dual upload as Shorts
             if (dualUpload && res.success && videoDuration && videoDuration > 60) {
@@ -556,8 +603,9 @@ const UploadPage = () => {
                       }, true);
 
                       if (slRes.success && slRes.smartLink) {
-                        const headerText = defaults.socialUnlockHeader ?? "🎁 UNLOCK EXCLUSIVE CONTENT";
-                        const bodyText = defaults.socialUnlockBody ?? "🎁 Unlock exclusive content!\n\nComplete the required actions to access:";
+                        const rawHeader = defaults.socialUnlockHeader ?? "🎁 UNLOCK EXCLUSIVE CONTENT";
+                        const rawBody = defaults.socialUnlockBody ?? "🎁 Unlock exclusive content!\n\nComplete the required actions to access:";
+                        const { header: headerText, body: bodyText } = await getTranslatedSmartLink(destLang, rawHeader, rawBody);
 
                         // Update Shorts description with smart link
                         try {
