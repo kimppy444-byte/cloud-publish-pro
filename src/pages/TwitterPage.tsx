@@ -26,32 +26,6 @@ const TwitterPage = () => {
   const [suggestedTweets, setSuggestedTweets] = useState<string[]>([]);
   const [bestTimes, setBestTimes] = useState<any[]>([]);
 
-  const loadAccounts = async () => {
-    const res = await getXAccountCount();
-    const count = (res as any).count || 0;
-    if (res.success && count > 0) {
-      setAccountCount(count);
-      const accs: AccountInfo[] = Array.from({ length: count }, (_, i) => ({
-        index: i, verified: false, loading: true,
-      }));
-      setAccounts(accs);
-
-      for (let i = 0; i < count; i++) {
-        verifyXAccount(i).then(vRes => {
-          setAccounts(prev => prev.map(a =>
-            a.index === i ? {
-              ...a,
-              loading: false,
-              verified: vRes.success,
-              username: vRes.data?.data?.username,
-              name: vRes.data?.data?.name,
-            } : a
-          ));
-        });
-      }
-    }
-  };
-
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -65,21 +39,6 @@ const TwitterPage = () => {
       setSelectedFile(file);
     } else {
       toast.error("Please select a video or image file");
-    }
-  };
-
-  const toggleAccount = (idx: number) => {
-    setSelectedAccounts(prev =>
-      prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx]
-    );
-  };
-
-  const selectAllAccounts = () => {
-    const verified = accounts.filter(a => a.verified && a.index !== 0).map(a => a.index);
-    if (selectedAccounts.length === verified.length) {
-      setSelectedAccounts([]);
-    } else {
-      setSelectedAccounts(verified);
     }
   };
 
