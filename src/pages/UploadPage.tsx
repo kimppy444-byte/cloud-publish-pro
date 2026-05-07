@@ -262,6 +262,21 @@ const UploadPage = () => {
     if (selectedAccounts.length === 0) { toast.error("Please select at least one destination."); return; }
     if (!title.trim()) { toast.error("Please enter a video title."); return; }
 
+    // Duplicate-upload guard
+    try {
+      const { fileHash } = await import("@/lib/image-compressor");
+      const { findDuplicate } = await import("@/lib/upload-history");
+      const hash = await fileHash(selectedFile);
+      const dup = findDuplicate(hash);
+      if (dup) {
+        const ok = window.confirm(
+          `⚠️ This exact file was already uploaded as "${dup.title}" to ${dup.channelTitle} on ${new Date(dup.uploadedAt).toLocaleString()}.\n\nUpload again anyway?`
+        );
+        if (!ok) return;
+      }
+      (selectedFile as any).__hash = hash;
+    } catch {}
+
     setUploading(true);
     setResults([]);
     const publishResults: PublishResult[] = [];
