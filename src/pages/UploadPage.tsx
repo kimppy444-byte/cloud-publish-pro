@@ -367,7 +367,8 @@ const UploadPage = () => {
                 }, true);
 
                 if (slRes.success && slRes.smartLink) {
-                  const bodyText = defaults.socialUnlockBody ?? "🎁 Unlock exclusive content!\n\nComplete the required actions to access:";
+                  const rawBody = defaults.socialUnlockBody ?? "🎁 Unlock exclusive content!\n\nComplete the required actions to access:";
+                  const { body: bodyText } = await getTranslatedSmartLink(destLang, '', rawBody);
                   const commentText = `${bodyText}\n${slRes.smartLink}`;
                   setUploadProgress(`Posting smart link comment on ${dest.name}...`);
                   const { postInstagramComment } = await import("@/lib/facebook-api");
