@@ -496,22 +496,12 @@ const TwitterPage = () => {
 
         <div className="flex gap-2">
           <Button
-            onClick={scheduleMode ? handleSchedulePost : handleUpload}
-            disabled={isUploading || (!tweetText && !selectedFile) || selectedAccounts.length === 0}
+            onClick={handleUpload}
+            disabled={isUploading || (!tweetText && !selectedFile)}
             className="flex-1 bg-foreground text-background hover:bg-foreground/90"
           >
-            {isUploading ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            ) : scheduleMode ? (
-              <CalendarClock className="w-4 h-4 mr-2" />
-            ) : (
-              <Send className="w-4 h-4 mr-2" />
-            )}
-            {scheduleMode
-              ? `Schedule to ${selectedAccounts.length} Account${selectedAccounts.length !== 1 ? 's' : ''}`
-              : selectedFile
-                ? `Upload & Tweet to ${selectedAccounts.length} Account${selectedAccounts.length !== 1 ? 's' : ''}`
-                : `Post to ${selectedAccounts.length} Account${selectedAccounts.length !== 1 ? 's' : ''}`}
+            {isUploading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
+            Open X to Post
           </Button>
         </div>
       </motion.div>
