@@ -102,9 +102,9 @@ const UploadPage = () => {
   const [translating, setTranslating] = useState(false);
   const [translateLang, setTranslateLang] = useState('es');
 
-  // Multi-language upload: for each selected language, create a translated copy of the upload.
-  // Empty array = original behavior (single original-language upload only).
-  const [multiLangTargets, setMultiLangTargets] = useState<string[]>([]);
+  // Per-channel language assignment. Key = destination id, value = lang code ('' or absent = original/English).
+  // One upload per channel, in its assigned language.
+  const [channelLangs, setChannelLangs] = useState<Record<string, string>>({});
 
   // AI states
   const [aiLoading, setAiLoading] = useState<string | null>(null);
@@ -286,40 +286,41 @@ const UploadPage = () => {
       const selected = destinations.filter(d => selectedAccounts.includes(d.id));
       const tags = selectedTags.join(',');
 
-      // Build the language list to upload for. Empty multiLangTargets => single pass with originals.
-      const langPasses: Array<{ lang: string; title: string; description: string; langCode: string }> = [];
+      // Per-channel language: translate title/description per destination's assigned language.
+      // Cache translations to avoid repeating for the same target language.
       const originalLangCode = defaultLanguage || 'en';
-      langPasses.push({ lang: 'Original', title, description, langCode: originalLangCode });
+      const translationCache: Record<string, { title: string; description: string }> = {
+        [originalLangCode]: { title, description },
+      };
 
-      for (const targetLang of multiLangTargets) {
-        if (targetLang === originalLangCode) continue; // skip duplicate of original
+      const getTranslated = async (targetLang: string) => {
+        if (!targetLang || targetLang === originalLangCode) return translationCache[originalLangCode];
+        if (translationCache[targetLang]) return translationCache[targetLang];
         setUploadProgress(`Translating to ${targetLang.toUpperCase()}...`);
         const [tRes, dRes] = await Promise.all([
           translateText(title, targetLang, originalLangCode),
           description ? translateText(description, targetLang, originalLangCode) : Promise.resolve({ success: true, translatedText: '' } as any),
         ]);
-        if (!tRes.success) {
-          toast.warning(`Title translation to ${targetLang} failed: ${tRes.error}. Using original.`);
-        }
-        langPasses.push({
-          lang: targetLang.toUpperCase(),
+        if (!tRes.success) toast.warning(`Title translation to ${targetLang} failed: ${tRes.error}. Using original.`);
+        const result = {
           title: tRes.success && tRes.translatedText ? tRes.translatedText : title,
           description: dRes.success && dRes.translatedText !== undefined ? dRes.translatedText : description,
-          langCode: targetLang,
-        });
-      }
+        };
+        translationCache[targetLang] = result;
+        return result;
+      };
 
       for (let repeatIdx = 0; repeatIdx < repeatCount; repeatIdx++) {
         const repeatLabel = repeatCount > 1 ? ` (copy ${repeatIdx + 1}/${repeatCount})` : '';
 
-      for (const langPass of langPasses) {
-      // Shadow originals with this pass's translated values
-      const title = langPass.title;
-      const description = langPass.description;
-      const defaultLanguage = langPass.langCode;
-      const langSuffix = langPasses.length > 1 ? ` [${langPass.lang}]` : '';
-
       for (const dest of selected) {
+        // Resolve this destination's language (only meaningful for YouTube; others get original).
+        const destLang = (dest.platform === 'youtube' ? channelLangs[dest.id] : '') || originalLangCode;
+        const translated = await getTranslated(destLang);
+        const title = translated.title;
+        const description = translated.description;
+        const defaultLanguage = destLang;
+        const langSuffix = destLang !== originalLangCode ? ` [${destLang.toUpperCase()}]` : '';
         setUploadProgress(`Publishing to ${dest.name} (${dest.platform})${repeatLabel}${langSuffix}...`);
 
 
@@ -610,7 +611,6 @@ const UploadPage = () => {
           }
         }
       }
-      } // end langPass loop
       } // end repeatCount loop
 
       setResults(publishResults);
@@ -831,62 +831,8 @@ const UploadPage = () => {
             <Textarea placeholder="Enter video description" rows={4} value={description} onChange={e => setDescription(e.target.value)} disabled={uploading} />
           </div>
 
-          {/* Multi-language uploads: 1 extra translated upload per language per channel */}
-          <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl">
-            <div className="flex items-center gap-2 mb-2">
-              <Languages className="w-4 h-4 text-primary" />
-              <span className="text-sm font-semibold text-foreground">Multi-Language Uploads</span>
-              {multiLangTargets.length > 0 && (
-                <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-                  +{multiLangTargets.length} extra upload{multiLangTargets.length === 1 ? '' : 's'} per channel
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground mb-3">
-              Original uploads first, then 1 translated copy per language selected. Title + description are translated automatically.
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {[
-                { code: 'es', label: 'Spanish' }, { code: 'fr', label: 'French' },
-                { code: 'de', label: 'German' }, { code: 'pt', label: 'Portuguese' },
-                { code: 'it', label: 'Italian' }, { code: 'ja', label: 'Japanese' },
-                { code: 'ko', label: 'Korean' }, { code: 'zh', label: 'Chinese' },
-                { code: 'ar', label: 'Arabic' }, { code: 'ru', label: 'Russian' },
-                { code: 'hi', label: 'Hindi' }, { code: 'id', label: 'Indonesian' },
-                { code: 'tr', label: 'Turkish' }, { code: 'vi', label: 'Vietnamese' },
-                { code: 'th', label: 'Thai' }, { code: 'tl', label: 'Filipino' },
-              ].map(l => {
-                const active = multiLangTargets.includes(l.code);
-                return (
-                  <button
-                    key={l.code}
-                    type="button"
-                    disabled={uploading}
-                    onClick={() => setMultiLangTargets(prev =>
-                      prev.includes(l.code) ? prev.filter(c => c !== l.code) : [...prev, l.code]
-                    )}
-                    className={`px-2.5 py-1 rounded-full text-xs border transition-all ${
-                      active
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-background border-border hover:border-primary/50 text-foreground'
-                    } disabled:opacity-50`}
-                  >
-                    {active ? '✓ ' : ''}{l.label}
-                  </button>
-                );
-              })}
-              {multiLangTargets.length > 0 && (
-                <button
-                  type="button"
-                  disabled={uploading}
-                  onClick={() => setMultiLangTargets([])}
-                  className="px-2.5 py-1 rounded-full text-xs border border-destructive/30 text-destructive hover:bg-destructive/10 transition-all disabled:opacity-50"
-                >
-                  Clear
-                </button>
-              )}
-            </div>
-          </div>
+          {/* Per-channel language assignment is now controlled in the Upload Destinations section below.
+              Each channel uploads exactly once, in its assigned language. */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <div className="flex items-center justify-between mb-1.5">
@@ -1081,8 +1027,8 @@ const UploadPage = () => {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {destinations.map((dest) => (
-              <label key={dest.id}
-                className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+              <div key={dest.id}
+                className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
                   selectedAccounts.includes(dest.id) ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30"
                 }`}>
                 <Checkbox checked={selectedAccounts.includes(dest.id)} onCheckedChange={() => toggleAccount(dest.id)} disabled={uploading} />
@@ -1095,11 +1041,38 @@ const UploadPage = () => {
                 ) : (
                   <Facebook className="w-4 h-4 text-facebook" />
                 )}
-                <div className="flex flex-col min-w-0">
+                <div className="flex flex-col min-w-0 flex-1 cursor-pointer" onClick={() => !uploading && toggleAccount(dest.id)}>
                   <span className="text-sm font-medium text-foreground truncate">{dest.name}</span>
                   <span className="text-xs text-muted-foreground capitalize">{dest.platform}</span>
                 </div>
-              </label>
+                {dest.platform === 'youtube' && selectedAccounts.includes(dest.id) && (
+                  <select
+                    value={channelLangs[dest.id] || ''}
+                    onChange={e => setChannelLangs(prev => ({ ...prev, [dest.id]: e.target.value }))}
+                    disabled={uploading}
+                    title="Upload language for this channel"
+                    className="text-xs border border-border rounded px-1.5 py-1 bg-background text-foreground"
+                  >
+                    <option value="">English (original)</option>
+                    <option value="es">Spanish</option>
+                    <option value="fr">French</option>
+                    <option value="de">German</option>
+                    <option value="pt">Portuguese</option>
+                    <option value="it">Italian</option>
+                    <option value="ja">Japanese</option>
+                    <option value="ko">Korean</option>
+                    <option value="zh">Chinese</option>
+                    <option value="ar">Arabic</option>
+                    <option value="ru">Russian</option>
+                    <option value="hi">Hindi</option>
+                    <option value="id">Indonesian</option>
+                    <option value="tr">Turkish</option>
+                    <option value="vi">Vietnamese</option>
+                    <option value="th">Thai</option>
+                    <option value="tl">Filipino</option>
+                  </select>
+                )}
+              </div>
             ))}
           </div>
         )}
