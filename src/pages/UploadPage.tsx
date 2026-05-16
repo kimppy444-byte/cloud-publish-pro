@@ -780,7 +780,7 @@ const UploadPage = () => {
               </div>
               <div>
                 <p className="font-medium text-foreground">Drop your video here or click to browse</p>
-                <p className="text-sm text-muted-foreground mt-1">MP4, MOV, AVI, WebM · Max 128 MB</p>
+                <p className="text-sm text-muted-foreground mt-1">MP4, MOV, AVI, WebM · Up to 128 GB</p>
               </div>
             </div>
           </div>
