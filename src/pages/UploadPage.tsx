@@ -671,13 +671,29 @@ const UploadPage = () => {
       }
       } // end repeatCount loop
 
-      setResults(publishResults);
+      // Merge results when retrying so previous successes stay visible
+      setResults(prev => {
+        if (!overrideAccountIds) return publishResults;
+        const retriedIds = new Set(overrideAccountIds);
+        const kept = prev.filter(r => !r.destinationId || !retriedIds.has(r.destinationId) || r.success);
+        return [...kept, ...publishResults];
+      });
       const successCount = publishResults.filter(r => r.success).length;
       if (successCount === publishResults.length) {
         toast.success(`Published to all ${successCount} destinations!`);
       } else {
-        toast.warning(`Published to ${successCount}/${publishResults.length} destinations.`);
+        toast.warning(`Published to ${successCount}/${publishResults.length} destinations. Use "Retry Failed" below.`);
       }
+      // Browser notification when tab is hidden so user can switch back
+      try {
+        if (typeof Notification !== 'undefined' && document.hidden) {
+          if (Notification.permission === 'granted') {
+            new Notification('Upload finished', { body: `${successCount}/${publishResults.length} succeeded` });
+          } else if (Notification.permission !== 'denied') {
+            Notification.requestPermission();
+          }
+        }
+      } catch {}
 
       await supabase.storage.from('videos').remove([storagePath]);
     } catch (err: any) {
