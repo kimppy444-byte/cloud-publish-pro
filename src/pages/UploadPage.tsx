@@ -175,6 +175,18 @@ const UploadPage = () => {
     }
   }, []);
 
+  // Warn before navigating away mid-upload
+  useEffect(() => {
+    if (!uploading) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = 'Upload in progress. Leaving will cancel it.';
+      return e.returnValue;
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [uploading]);
+
   useEffect(() => {
     const loadDestinations = async () => {
       setLoadingDestinations(true);
