@@ -145,8 +145,8 @@ const BulkUploadPage = () => {
     })));
 
   const handleFileChange = (id: string, file: File | null) => {
-    if (file && file.size > 256 * 1024 * 1024) {
-      toast.error("File must be under 256 MB");
+    if (file && file.size > 128 * 1024 * 1024 * 1024) {
+      toast.error("File must be under 128 GB");
       return;
     }
     const current = videos.find(v => v.id === id);

@@ -222,8 +222,9 @@ const UploadPage = () => {
       toast.error("Invalid file type. Please upload MP4, MOV, AVI, or WebM.");
       return;
     }
-    if (file.size > 128 * 1024 * 1024) {
-      toast.error("File size must be less than 128 MB.");
+    // YouTube resumable upload supports up to 256 GB. Cap at 128 GB for safety.
+    if (file.size > 128 * 1024 * 1024 * 1024) {
+      toast.error("File size must be less than 128 GB.");
       return;
     }
     setSelectedFile(file);
@@ -779,7 +780,7 @@ const UploadPage = () => {
               </div>
               <div>
                 <p className="font-medium text-foreground">Drop your video here or click to browse</p>
-                <p className="text-sm text-muted-foreground mt-1">MP4, MOV, AVI, WebM · Max 128 MB</p>
+                <p className="text-sm text-muted-foreground mt-1">MP4, MOV, AVI, WebM · Up to 128 GB</p>
               </div>
             </div>
           </div>
