@@ -301,7 +301,7 @@ const UploadPage = () => {
       const { data: { publicUrl } } = supabase.storage.from('videos').getPublicUrl(storagePath);
       toast.success('Video uploaded to storage!');
 
-      const selected = destinations.filter(d => selectedAccounts.includes(d.id));
+      const selected = destinations.filter(d => activeAccountIds.includes(d.id));
       const tags = selectedTags.join(',');
 
       // Per-channel language: translate title/description per destination's assigned language.
