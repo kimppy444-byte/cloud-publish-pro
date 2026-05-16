@@ -259,9 +259,10 @@ const UploadPage = () => {
     }
   };
 
-  const handleUpload = async () => {
+  const handleUpload = async (overrideAccountIds?: string[]) => {
+    const activeAccountIds = overrideAccountIds && overrideAccountIds.length > 0 ? overrideAccountIds : selectedAccounts;
     if (!selectedFile) { toast.error("Please select a video file."); return; }
-    if (selectedAccounts.length === 0) { toast.error("Please select at least one destination."); return; }
+    if (activeAccountIds.length === 0) { toast.error("Please select at least one destination."); return; }
     if (!title.trim()) { toast.error("Please enter a video title."); return; }
 
     // Duplicate-upload guard
