@@ -1193,7 +1193,26 @@ const UploadPage = () => {
 
         {results.length > 0 && (
           <div className="bg-card rounded-xl p-5 shadow-card border border-border/50 space-y-3">
-            <h3 className="font-display font-semibold text-foreground">Upload Results</h3>
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <h3 className="font-display font-semibold text-foreground">Upload Results</h3>
+              {(() => {
+                const failedIds = Array.from(new Set(
+                  results.filter(r => !r.success && r.destinationId).map(r => r.destinationId!)
+                ));
+                if (failedIds.length === 0 || !selectedFile || uploading) return null;
+                return (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => handleUpload(failedIds)}
+                    className="gap-2"
+                  >
+                    <UploadIcon className="w-3.5 h-3.5" />
+                    Retry Failed ({failedIds.length})
+                  </Button>
+                );
+              })()}
+            </div>
             {results.map((r, i) => (
               <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-muted">
                 {r.success ? (
