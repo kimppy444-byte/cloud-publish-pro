@@ -361,11 +361,11 @@ const UploadPage = () => {
 
         if (dest.platform === 'facebook' && dest.pageId && dest.pageAccessToken) {
           const res = await publishToFacebook(dest.pageId, dest.pageAccessToken, publicUrl, title, description);
-          publishResults.push({ destinationName: dest.name, platform: 'Facebook', success: res.success, error: res.error });
+          publishResults.push({ destinationId: dest.id, destinationName: dest.name, platform: 'Facebook', success: res.success, error: res.error });
         } else if (dest.platform === 'instagram' && dest.igAccountId && dest.pageAccessToken) {
           const caption = `${title}\n\n${description}${selectedTags.length ? '\n\n' + selectedTags.map(t => `#${t}`).join(' ') : ''}`;
           const res = await publishToInstagram(dest.igAccountId, dest.pageAccessToken, publicUrl, caption);
-          publishResults.push({ destinationName: dest.name, platform: 'Instagram', success: res.success, error: res.error, videoId: res.data?.id });
+          publishResults.push({ destinationId: dest.id, destinationName: dest.name, platform: 'Instagram', success: res.success, error: res.error, videoId: res.data?.id });
 
           // Smart link auto-comment for Instagram
           if (res.success && res.data?.id) {
@@ -664,7 +664,7 @@ const UploadPage = () => {
             }
           } else {
             const res = await uploadToYouTube(storagePath, title, description, selectedTags, privacy);
-            publishResults.push({ destinationName: dest.name, platform: 'YouTube', success: res.success, error: res.error });
+            publishResults.push({ destinationId: dest.id, destinationName: dest.name, platform: 'YouTube', success: res.success, error: res.error });
           }
         }
       }
