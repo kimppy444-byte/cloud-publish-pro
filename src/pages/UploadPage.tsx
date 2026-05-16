@@ -527,7 +527,7 @@ const UploadPage = () => {
               }
             }
             publishResults.push({
-              destinationName: dest.name, platform: 'YouTube',
+              destinationId: dest.id, destinationName: dest.name, platform: 'YouTube',
               success: res.success, error: res.error, videoId: res.videoId,
             });
             if (res.success && res.videoId) {
@@ -652,12 +652,12 @@ const UploadPage = () => {
                 }
 
                 publishResults.push({
-                  destinationName: `${dest.name} (Short)`, platform: 'YouTube',
+                  destinationId: dest.id, destinationName: `${dest.name} (Short)`, platform: 'YouTube',
                   success: shortsRes.success, error: shortsRes.error, videoId: shortsRes.videoId,
                 });
               } catch (err: any) {
                 publishResults.push({
-                  destinationName: `${dest.name} (Short)`, platform: 'YouTube',
+                  destinationId: dest.id, destinationName: `${dest.name} (Short)`, platform: 'YouTube',
                   success: false, error: `Shorts creation failed: ${err.message}`,
                 });
               }
