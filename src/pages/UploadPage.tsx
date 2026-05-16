@@ -407,7 +407,7 @@ const UploadPage = () => {
           if (dest.accessToken) {
             const finalTitle = (isShort && videoDuration && videoDuration <= 60) ? `${title} #Shorts` : title;
             const finalDesc = (isShort && videoDuration && videoDuration <= 60) ? `${description}\n\n#Shorts` : description;
-            const res = await uploadVideoToYouTube(dest.accessToken, selectedFile, {
+            const ytUploadOnce = () => uploadVideoToYouTube(dest.accessToken!, selectedFile, {
               title: finalTitle, description: finalDesc,
               tags: selectedTags, categoryId: category, privacyStatus: privacy,
               allowComments, allowRatings,
@@ -417,6 +417,13 @@ const UploadPage = () => {
               recordingDate: recordingDate || undefined,
               notifySubscribers,
             });
+            let res = await ytUploadOnce();
+            if (!res.success) {
+              setUploadProgress(`Retrying ${dest.name} in 5s...`);
+              await new Promise(r => setTimeout(r, 5000));
+              setUploadProgress(`Retrying ${dest.name} (attempt 2)...`);
+              res = await ytUploadOnce();
+            }
             if (res.success && res.videoId && thumbnail) {
               await uploadThumbnail(dest.accessToken, res.videoId, thumbnail);
             }
