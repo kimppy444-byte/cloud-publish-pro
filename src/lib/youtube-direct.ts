@@ -177,20 +177,92 @@ export async function uploadVideoToYouTube(
     const sessionUri = initRes.headers.get("location");
     if (!sessionUri) return { success: false, error: "No session URI" };
 
-    const uploadRes = await fetch(sessionUri, {
-      method: "PUT",
-      headers: { "Content-Type": file.type || "video/mp4" },
-      body: file,
-    });
+    // Chunked resumable upload with per-chunk retry.
+    // YouTube requires chunk sizes to be multiples of 256 KB (except the final chunk).
+    const CHUNK_SIZE = 8 * 1024 * 1024; // 8 MB
+    const MAX_RETRIES = 5;
+    const contentType = file.type || "video/mp4";
+    let offset = 0;
+    let finalResult: any = null;
 
-    if (!uploadRes.ok) {
-      const text = await uploadRes.text();
-      return { success: false, error: `Upload failed (${uploadRes.status}): ${text}` };
+    while (offset < file.size) {
+      const end = Math.min(offset + CHUNK_SIZE, file.size);
+      const chunk = file.slice(offset, end);
+      const range = `bytes ${offset}-${end - 1}/${file.size}`;
+
+      let attempt = 0;
+      let uploaded = false;
+      while (attempt < MAX_RETRIES && !uploaded) {
+        try {
+          const res = await fetch(sessionUri, {
+            method: "PUT",
+            headers: {
+              "Content-Type": contentType,
+              "Content-Length": (end - offset).toString(),
+              "Content-Range": range,
+            },
+            body: chunk,
+          });
+
+          if (res.status === 308) {
+            // Incomplete — server tells us how much it received
+            const rangeHeader = res.headers.get("range");
+            if (rangeHeader) {
+              const m = rangeHeader.match(/bytes=0-(\d+)/);
+              if (m) offset = parseInt(m[1], 10) + 1;
+              else offset = end;
+            } else {
+              offset = end;
+            }
+            uploaded = true;
+          } else if (res.ok) {
+            finalResult = await res.json();
+            offset = file.size;
+            uploaded = true;
+          } else if (res.status === 500 || res.status === 502 || res.status === 503 || res.status === 504) {
+            // Transient — query upload status, then retry
+            attempt++;
+            await new Promise((r) => setTimeout(r, Math.min(2 ** attempt * 500, 15000)));
+            const statusRes = await fetch(sessionUri, {
+              method: "PUT",
+              headers: { "Content-Range": `bytes */${file.size}`, "Content-Length": "0" },
+            });
+            if (statusRes.status === 308) {
+              const rangeHeader = statusRes.headers.get("range");
+              if (rangeHeader) {
+                const m = rangeHeader.match(/bytes=0-(\d+)/);
+                if (m) offset = parseInt(m[1], 10) + 1;
+              }
+            } else if (statusRes.ok) {
+              finalResult = await statusRes.json();
+              offset = file.size;
+              uploaded = true;
+            }
+          } else {
+            const text = await res.text();
+            return { success: false, error: `Upload failed (${res.status}): ${text}` };
+          }
+        } catch (netErr: any) {
+          attempt++;
+          if (attempt >= MAX_RETRIES) {
+            return { success: false, error: `Network error after ${MAX_RETRIES} retries: ${netErr.message}` };
+          }
+          await new Promise((r) => setTimeout(r, Math.min(2 ** attempt * 500, 15000)));
+        }
+      }
+
+      if (!uploaded) {
+        return { success: false, error: `Chunk upload failed at offset ${offset} after ${MAX_RETRIES} retries` };
+      }
+
+      onProgress?.(Math.round((offset / file.size) * 100));
     }
 
-    const result = await uploadRes.json();
+    if (!finalResult) {
+      return { success: false, error: "Upload completed but no video ID returned" };
+    }
     onProgress?.(100);
-    return { success: true, videoId: result.id };
+    return { success: true, videoId: finalResult.id };
   } catch (err: any) {
     return { success: false, error: err.message };
   }
