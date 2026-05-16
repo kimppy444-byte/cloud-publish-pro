@@ -1146,7 +1146,7 @@ const UploadPage = () => {
         ) : (
           <div className="flex items-center gap-4">
             <Button size="lg" className="bg-gradient-brand text-primary-foreground hover:opacity-90"
-              onClick={handleUpload} disabled={!selectedFile || selectedAccounts.length === 0 || !title.trim()}>
+              onClick={() => handleUpload()} disabled={!selectedFile || selectedAccounts.length === 0 || !title.trim()}>
               <UploadIcon className="w-4 h-4 mr-2" />
               Upload to {selectedAccounts.length} Destination{selectedAccounts.length !== 1 ? "s" : ""}
               {repeatCount > 1 ? ` × ${repeatCount}` : ""}
