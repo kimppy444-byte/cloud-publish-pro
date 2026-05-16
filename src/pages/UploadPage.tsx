@@ -37,6 +37,7 @@ interface UploadDestination {
 }
 
 interface PublishResult {
+  destinationId?: string;
   destinationName: string;
   platform: string;
   success: boolean;
