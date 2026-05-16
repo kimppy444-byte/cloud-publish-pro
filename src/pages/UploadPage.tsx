@@ -37,6 +37,7 @@ interface UploadDestination {
 }
 
 interface PublishResult {
+  destinationId?: string;
   destinationName: string;
   platform: string;
   success: boolean;
@@ -174,6 +175,18 @@ const UploadPage = () => {
     }
   }, []);
 
+  // Warn before navigating away mid-upload
+  useEffect(() => {
+    if (!uploading) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = 'Upload in progress. Leaving will cancel it.';
+      return e.returnValue;
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [uploading]);
+
   useEffect(() => {
     const loadDestinations = async () => {
       setLoadingDestinations(true);
@@ -258,9 +271,10 @@ const UploadPage = () => {
     }
   };
 
-  const handleUpload = async () => {
+  const handleUpload = async (overrideAccountIds?: string[]) => {
+    const activeAccountIds = overrideAccountIds && overrideAccountIds.length > 0 ? overrideAccountIds : selectedAccounts;
     if (!selectedFile) { toast.error("Please select a video file."); return; }
-    if (selectedAccounts.length === 0) { toast.error("Please select at least one destination."); return; }
+    if (activeAccountIds.length === 0) { toast.error("Please select at least one destination."); return; }
     if (!title.trim()) { toast.error("Please enter a video title."); return; }
 
     // Duplicate-upload guard
@@ -299,7 +313,7 @@ const UploadPage = () => {
       const { data: { publicUrl } } = supabase.storage.from('videos').getPublicUrl(storagePath);
       toast.success('Video uploaded to storage!');
 
-      const selected = destinations.filter(d => selectedAccounts.includes(d.id));
+      const selected = destinations.filter(d => activeAccountIds.includes(d.id));
       const tags = selectedTags.join(',');
 
       // Per-channel language: translate title/description per destination's assigned language.
@@ -360,11 +374,11 @@ const UploadPage = () => {
 
         if (dest.platform === 'facebook' && dest.pageId && dest.pageAccessToken) {
           const res = await publishToFacebook(dest.pageId, dest.pageAccessToken, publicUrl, title, description);
-          publishResults.push({ destinationName: dest.name, platform: 'Facebook', success: res.success, error: res.error });
+          publishResults.push({ destinationId: dest.id, destinationName: dest.name, platform: 'Facebook', success: res.success, error: res.error });
         } else if (dest.platform === 'instagram' && dest.igAccountId && dest.pageAccessToken) {
           const caption = `${title}\n\n${description}${selectedTags.length ? '\n\n' + selectedTags.map(t => `#${t}`).join(' ') : ''}`;
           const res = await publishToInstagram(dest.igAccountId, dest.pageAccessToken, publicUrl, caption);
-          publishResults.push({ destinationName: dest.name, platform: 'Instagram', success: res.success, error: res.error, videoId: res.data?.id });
+          publishResults.push({ destinationId: dest.id, destinationName: dest.name, platform: 'Instagram', success: res.success, error: res.error, videoId: res.data?.id });
 
           // Smart link auto-comment for Instagram
           if (res.success && res.data?.id) {
@@ -406,7 +420,7 @@ const UploadPage = () => {
           if (dest.accessToken) {
             const finalTitle = (isShort && videoDuration && videoDuration <= 60) ? `${title} #Shorts` : title;
             const finalDesc = (isShort && videoDuration && videoDuration <= 60) ? `${description}\n\n#Shorts` : description;
-            const res = await uploadVideoToYouTube(dest.accessToken, selectedFile, {
+            const ytUploadOnce = () => uploadVideoToYouTube(dest.accessToken!, selectedFile, {
               title: finalTitle, description: finalDesc,
               tags: selectedTags, categoryId: category, privacyStatus: privacy,
               allowComments, allowRatings,
@@ -416,6 +430,13 @@ const UploadPage = () => {
               recordingDate: recordingDate || undefined,
               notifySubscribers,
             });
+            let res = await ytUploadOnce();
+            if (!res.success) {
+              setUploadProgress(`Retrying ${dest.name} in 5s...`);
+              await new Promise(r => setTimeout(r, 5000));
+              setUploadProgress(`Retrying ${dest.name} (attempt 2)...`);
+              res = await ytUploadOnce();
+            }
             if (res.success && res.videoId && thumbnail) {
               await uploadThumbnail(dest.accessToken, res.videoId, thumbnail);
             }
@@ -519,7 +540,7 @@ const UploadPage = () => {
               }
             }
             publishResults.push({
-              destinationName: dest.name, platform: 'YouTube',
+              destinationId: dest.id, destinationName: dest.name, platform: 'YouTube',
               success: res.success, error: res.error, videoId: res.videoId,
             });
             if (res.success && res.videoId) {
@@ -644,31 +665,47 @@ const UploadPage = () => {
                 }
 
                 publishResults.push({
-                  destinationName: `${dest.name} (Short)`, platform: 'YouTube',
+                  destinationId: dest.id, destinationName: `${dest.name} (Short)`, platform: 'YouTube',
                   success: shortsRes.success, error: shortsRes.error, videoId: shortsRes.videoId,
                 });
               } catch (err: any) {
                 publishResults.push({
-                  destinationName: `${dest.name} (Short)`, platform: 'YouTube',
+                  destinationId: dest.id, destinationName: `${dest.name} (Short)`, platform: 'YouTube',
                   success: false, error: `Shorts creation failed: ${err.message}`,
                 });
               }
             }
           } else {
             const res = await uploadToYouTube(storagePath, title, description, selectedTags, privacy);
-            publishResults.push({ destinationName: dest.name, platform: 'YouTube', success: res.success, error: res.error });
+            publishResults.push({ destinationId: dest.id, destinationName: dest.name, platform: 'YouTube', success: res.success, error: res.error });
           }
         }
       }
       } // end repeatCount loop
 
-      setResults(publishResults);
+      // Merge results when retrying so previous successes stay visible
+      setResults(prev => {
+        if (!overrideAccountIds) return publishResults;
+        const retriedIds = new Set(overrideAccountIds);
+        const kept = prev.filter(r => !r.destinationId || !retriedIds.has(r.destinationId) || r.success);
+        return [...kept, ...publishResults];
+      });
       const successCount = publishResults.filter(r => r.success).length;
       if (successCount === publishResults.length) {
         toast.success(`Published to all ${successCount} destinations!`);
       } else {
-        toast.warning(`Published to ${successCount}/${publishResults.length} destinations.`);
+        toast.warning(`Published to ${successCount}/${publishResults.length} destinations. Use "Retry Failed" below.`);
       }
+      // Browser notification when tab is hidden so user can switch back
+      try {
+        if (typeof Notification !== 'undefined' && document.hidden) {
+          if (Notification.permission === 'granted') {
+            new Notification('Upload finished', { body: `${successCount}/${publishResults.length} succeeded` });
+          } else if (Notification.permission !== 'denied') {
+            Notification.requestPermission();
+          }
+        }
+      } catch {}
 
       await supabase.storage.from('videos').remove([storagePath]);
     } catch (err: any) {
@@ -1137,7 +1174,7 @@ const UploadPage = () => {
         ) : (
           <div className="flex items-center gap-4">
             <Button size="lg" className="bg-gradient-brand text-primary-foreground hover:opacity-90"
-              onClick={handleUpload} disabled={!selectedFile || selectedAccounts.length === 0 || !title.trim()}>
+              onClick={() => handleUpload()} disabled={!selectedFile || selectedAccounts.length === 0 || !title.trim()}>
               <UploadIcon className="w-4 h-4 mr-2" />
               Upload to {selectedAccounts.length} Destination{selectedAccounts.length !== 1 ? "s" : ""}
               {repeatCount > 1 ? ` × ${repeatCount}` : ""}
@@ -1156,7 +1193,26 @@ const UploadPage = () => {
 
         {results.length > 0 && (
           <div className="bg-card rounded-xl p-5 shadow-card border border-border/50 space-y-3">
-            <h3 className="font-display font-semibold text-foreground">Upload Results</h3>
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <h3 className="font-display font-semibold text-foreground">Upload Results</h3>
+              {(() => {
+                const failedIds = Array.from(new Set(
+                  results.filter(r => !r.success && r.destinationId).map(r => r.destinationId!)
+                ));
+                if (failedIds.length === 0 || !selectedFile || uploading) return null;
+                return (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => handleUpload(failedIds)}
+                    className="gap-2"
+                  >
+                    <UploadIcon className="w-3.5 h-3.5" />
+                    Retry Failed ({failedIds.length})
+                  </Button>
+                );
+              })()}
+            </div>
             {results.map((r, i) => (
               <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-muted">
                 {r.success ? (
