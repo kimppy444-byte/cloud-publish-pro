@@ -11,6 +11,25 @@
 import { supabase } from "@/integrations/supabase/client";
 
 const API_BASE = "https://v0-sssw.vercel.app";
+const SELF_HOST_FLAG = "smart_link_self_host";
+
+/** Returns true when the user has opted into self-hosted smart links (testing). */
+export function isSelfHostSmartLinks(): boolean {
+  try { return localStorage.getItem(SELF_HOST_FLAG) === "true"; } catch { return false; }
+}
+
+export function setSelfHostSmartLinks(enabled: boolean) {
+  try { localStorage.setItem(SELF_HOST_FLAG, enabled ? "true" : "false"); } catch {}
+}
+
+function smartLinkBase(): string {
+  if (isSelfHostSmartLinks() && typeof window !== "undefined") {
+    return window.location.origin;
+  }
+  return API_BASE;
+}
+
+
 
 export interface YouTubeSmartLinkRequest {
   videoId: string;
@@ -95,7 +114,7 @@ export async function generateYouTubeSmartLink(
 
     const payload = [mask, compactChannelId, req.targetUrl];
     const encoded = base64url(payload);
-    const longUrl = `${API_BASE}/u/${req.videoId}?d=${encoded}`;
+    const longUrl = `${smartLinkBase()}/u/${req.videoId}?d=${encoded}`;
 
     if (shorten) {
       const shortLink = await shortenUrl(longUrl);
@@ -127,7 +146,7 @@ export async function generateFacebookSmartLink(
     const p = req.platform === "instagram" ? "i" : "f";
     const payload = [mask, p, req.pageId, req.postUrl || "", req.targetUrl, req.pageName || ""];
     const encoded = base64url(payload);
-    const longUrl = `${API_BASE}/u/fb/${req.postId}?d=${encoded}`;
+    const longUrl = `${smartLinkBase()}/u/fb/${req.postId}?d=${encoded}`;
 
     if (shorten) {
       const shortLink = await shortenUrl(longUrl);

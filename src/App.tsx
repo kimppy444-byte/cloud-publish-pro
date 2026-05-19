@@ -18,9 +18,15 @@ import IgAutoReplyPage from "./pages/IgAutoReplyPage";
 import TwitterPage from "./pages/TwitterPage";
 import ThreadsPage from "./pages/ThreadsPage";
 import FacebookAutoPostPage from "./pages/FacebookAutoPostPage";
+import UnlockYouTubePage from "./pages/UnlockYouTubePage";
+import UnlockFacebookPage from "./pages/UnlockFacebookPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
+
+const Gated = ({ children }: { children: React.ReactNode }) => (
+  <PasswordGate>{children}</PasswordGate>
+);
 
 const App = () => (
   <ErrorBoundary>
@@ -28,31 +34,35 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <PasswordGate>
-          <BrowserRouter>
-            <Routes>
-              <Route element={<AppLayout />}>
-                <Route path="/" element={<Index />} />
-                <Route path="/upload" element={<UploadPage />} />
-                <Route path="/bulk-upload" element={<BulkUploadPage />} />
-                <Route path="/analytics" element={<AnalyticsPage />} />
-                <Route path="/social" element={<SocialPage />} />
-                <Route path="/my-videos" element={<MyVideosPage />} />
-                <Route path="/ig-auto-reply" element={<IgAutoReplyPage />} />
+        <BrowserRouter>
+          <Routes>
+            {/* Public smart-link unlock pages (self-hosted, testing) */}
+            <Route path="/u/fb/:postId" element={<UnlockFacebookPage />} />
+            <Route path="/u/:videoId" element={<UnlockYouTubePage />} />
+
+            {/* OAuth callback (public) */}
+            <Route path="/youtube-callback" element={<YouTubeCallbackPage />} />
+
+            {/* Password-gated app */}
+            <Route element={<Gated><AppLayout /></Gated>}>
+              <Route path="/" element={<Index />} />
+              <Route path="/upload" element={<UploadPage />} />
+              <Route path="/bulk-upload" element={<BulkUploadPage />} />
+              <Route path="/analytics" element={<AnalyticsPage />} />
+              <Route path="/social" element={<SocialPage />} />
+              <Route path="/my-videos" element={<MyVideosPage />} />
+              <Route path="/ig-auto-reply" element={<IgAutoReplyPage />} />
               <Route path="/twitter" element={<TwitterPage />} />
               <Route path="/threads" element={<ThreadsPage />} />
               <Route path="/fb-auto-post" element={<FacebookAutoPostPage />} />
-                <Route path="/settings" element={<SettingsPage />} />
-              </Route>
-              <Route path="/youtube-callback" element={<YouTubeCallbackPage />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </PasswordGate>
+              <Route path="/settings" element={<SettingsPage />} />
+            </Route>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
   </ErrorBoundary>
 );
 
 export default App;
-
