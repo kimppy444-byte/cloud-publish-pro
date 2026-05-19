@@ -593,8 +593,10 @@ const SettingsPage = () => {
                 </div>
                 <Switch />
               </div>
+              <SelfHostSmartLinkToggle />
               <Button className="bg-gradient-brand text-primary-foreground hover:opacity-90" onClick={() => toast.success("Settings saved!")}>Save Settings</Button>
             </div>
+
           </motion.div>
         </TabsContent>
       </Tabs>
