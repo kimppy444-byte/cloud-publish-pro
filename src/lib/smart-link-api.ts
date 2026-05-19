@@ -114,7 +114,7 @@ export async function generateYouTubeSmartLink(
 
     const payload = [mask, compactChannelId, req.targetUrl];
     const encoded = base64url(payload);
-    const longUrl = `${API_BASE}/u/${req.videoId}?d=${encoded}`;
+    const longUrl = `${smartLinkBase()}/u/${req.videoId}?d=${encoded}`;
 
     if (shorten) {
       const shortLink = await shortenUrl(longUrl);
@@ -146,7 +146,7 @@ export async function generateFacebookSmartLink(
     const p = req.platform === "instagram" ? "i" : "f";
     const payload = [mask, p, req.pageId, req.postUrl || "", req.targetUrl, req.pageName || ""];
     const encoded = base64url(payload);
-    const longUrl = `${API_BASE}/u/fb/${req.postId}?d=${encoded}`;
+    const longUrl = `${smartLinkBase()}/u/fb/${req.postId}?d=${encoded}`;
 
     if (shorten) {
       const shortLink = await shortenUrl(longUrl);
