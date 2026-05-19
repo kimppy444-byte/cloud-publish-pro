@@ -605,3 +605,19 @@ const SettingsPage = () => {
 };
 
 export default SettingsPage;
+
+function SelfHostSmartLinkToggle() {
+  const [on, setOn] = useState(isSelfHostSmartLinks());
+  return (
+    <div className="flex items-start justify-between p-3 rounded-lg bg-muted gap-4">
+      <div>
+        <p className="text-sm font-medium text-foreground">Self-host smart links <span className="text-xs text-amber-500 font-normal">(testing)</span></p>
+        <p className="text-xs text-muted-foreground">
+          Generate smart links pointing at this site (<code className="text-[10px]">{window.location.origin}/u/…</code>) instead of the v0-sssw API.
+        </p>
+      </div>
+      <Switch checked={on} onCheckedChange={(v) => { setSelfHostSmartLinks(v); setOn(v); toast.success(v ? "Self-host smart links enabled" : "Using v0-sssw API"); }} />
+    </div>
+  );
+}
+
