@@ -10,6 +10,8 @@ import { useEffect, useState } from "react";
 import { getFacebookPages, getInstagramAccount } from "@/lib/facebook-api";
 import { getYouTubeAuthUrl, getYouTubeChannels, disconnectYouTube, validateYouTubeConfig, getStoredClientIds, saveClientIds, getActiveClientId, setActiveClientId } from "@/lib/youtube-api";
 import { getUploadDefaults, saveUploadDefaults, type UploadDefaults } from "@/lib/youtube-direct";
+import { isSelfHostSmartLinks, setSelfHostSmartLinks } from "@/lib/smart-link-api";
+
 
 interface ConnectedAccount {
   id: string;
