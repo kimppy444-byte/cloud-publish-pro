@@ -1214,6 +1214,14 @@ const UploadPage = () => {
                 className="w-16 h-10" disabled={uploading}
               />
             </div>
+            <div className="flex items-center gap-2" title="How many YouTube channels to upload to in parallel. Higher = faster mass uploads, but uses more bandwidth.">
+              <label className="text-sm font-medium text-foreground whitespace-nowrap">YT Parallel:</label>
+              <Input
+                type="number" min={1} max={5} value={ytConcurrency}
+                onChange={e => setYtConcurrency(Math.max(1, Math.min(5, parseInt(e.target.value) || 1)))}
+                className="w-16 h-10" disabled={uploading}
+              />
+            </div>
           </div>
         )}
 
