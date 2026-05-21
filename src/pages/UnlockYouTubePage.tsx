@@ -13,7 +13,20 @@ export default function UnlockYouTubePage() {
   const [actions, setActions] = useState({ subscribe: true, like: true, comment: false });
   const [completed, setCompleted] = useState<Record<string, boolean>>({});
   const [verifying, setVerifying] = useState<Record<string, boolean>>({});
-  const [unlocked, setUnlocked] = useState(false);
+  const [actionsDone, setActionsDone] = useState(false);
+  const [bonusClicks, setBonusClicks] = useState(0);
+  const unlocked = actionsDone && bonusClicks >= 2;
+
+  // Inject Monetag tag.min.js once
+  useEffect(() => {
+    if (document.querySelector('script[data-monetag="zone"]')) return;
+    const s = document.createElement('script');
+    s.dataset.zone = '11035793';
+    s.dataset.monetag = 'zone';
+    s.src = 'https://al5sm.com/tag.min.js';
+    s.async = true;
+    document.body.appendChild(s);
+  }, []);
 
   useEffect(() => {
     try {
@@ -48,11 +61,16 @@ export default function UnlockYouTubePage() {
         if (actions.subscribe) req.push("subscribe");
         if (actions.like) req.push("like");
         if (actions.comment) req.push("comment");
-        if (req.every(r => next[r])) setUnlocked(true);
+        if (req.every(r => next[r])) setActionsDone(true);
         return next;
       });
       setVerifying(v => ({ ...v, [action]: false }));
     }, 5000);
+  };
+
+  const handleBonusClick = () => {
+    window.open("https://omg10.com/4/11035810", "_blank");
+    setBonusClicks(c => Math.min(2, c + 1));
   };
 
   const handleUnlock = () => {
