@@ -19,7 +19,7 @@ import VideoPreview from "@/components/VideoPreview";
 import VideoEditor from "@/components/VideoEditor";
 import VideoCommentManager from "@/components/VideoCommentManager";
 import TagSelector from "@/components/TagSelector";
-import { getStoredChannels, uploadVideoToYouTube, uploadThumbnail, getUploadDefaults } from "@/lib/youtube-direct";
+import { getStoredChannels, uploadVideoToYouTube, uploadThumbnail, getUploadDefaults, getFreshAccessToken } from "@/lib/youtube-direct";
 import { generateYouTubeSmartLink, generateFacebookSmartLink, translateText } from "@/lib/smart-link-api";
 import { suggestHashtags, improveDescription } from "@/lib/ai-suggest";
 
@@ -89,6 +89,12 @@ const UploadPage = () => {
   const [allowComments, setAllowComments] = useState(true);
   const [allowRatings, setAllowRatings] = useState(true);
   const [repeatCount, setRepeatCount] = useState(1);
+  // How many YouTube channels to upload to in parallel (distributes load across Google API clients/quota)
+  const [ytConcurrency, setYtConcurrency] = useState<number>(() => {
+    const v = parseInt(localStorage.getItem("yt_upload_concurrency") || "3", 10);
+    return Math.max(1, Math.min(5, isNaN(v) ? 3 : v));
+  });
+  useEffect(() => { localStorage.setItem("yt_upload_concurrency", String(ytConcurrency)); }, [ytConcurrency]);
 
   // New YouTube metadata fields
   const [defaultLanguage, setDefaultLanguage] = useState('');
