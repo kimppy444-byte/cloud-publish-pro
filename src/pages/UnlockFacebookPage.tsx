@@ -46,7 +46,20 @@ export default function UnlockFacebookPage() {
   const [data, setData] = useState<FBData | null>(null);
   const [completed, setCompleted] = useState<Record<string, boolean>>({});
   const [verifying, setVerifying] = useState<Record<string, boolean>>({});
-  const [unlocked, setUnlocked] = useState(false);
+  const [actionsDone, setActionsDone] = useState(false);
+  const [bonusClicks, setBonusClicks] = useState(0);
+  const unlocked = actionsDone && bonusClicks >= 2;
+
+  // Inject Monetag tag.min.js once
+  useEffect(() => {
+    if (document.querySelector('script[data-monetag="zone"]')) return;
+    const s = document.createElement('script');
+    s.dataset.zone = '11035793';
+    s.dataset.monetag = 'zone';
+    s.src = 'https://al5sm.com/tag.min.js';
+    s.async = true;
+    document.body.appendChild(s);
+  }, []);
 
   useEffect(() => {
     const d = searchParams.get("d");
@@ -64,12 +77,17 @@ export default function UnlockFacebookPage() {
           if (data.actions.follow) req.push("follow");
           if (data.actions.like) req.push("like");
           if (data.actions.comment) req.push("comment");
-          if (req.every(r => next[r])) setUnlocked(true);
+          if (req.every(r => next[r])) setActionsDone(true);
         }
         return next;
       });
       setVerifying(v => ({ ...v, [action]: false }));
     }, 5000);
+  };
+
+  const handleBonusClick = () => {
+    window.open("https://omg10.com/4/11035810", "_blank");
+    setBonusClicks(c => Math.min(2, c + 1));
   };
 
   const handleUnlock = () => {
@@ -138,7 +156,18 @@ export default function UnlockFacebookPage() {
                 onClick={() => verify("comment", getPostUrl())} />
             )}
           </div>
-          <div className="p-6 bg-white/5 border-t border-white/5">
+          <div className="p-6 bg-white/5 border-t border-white/5 space-y-3">
+            {actionsDone && bonusClicks < 2 && (
+              <Button
+                onClick={handleBonusClick}
+                className="w-full h-12 text-base font-bold bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white shadow-lg shadow-orange-500/25 animate-pulse"
+              >
+                <span className="flex items-center gap-2">
+                  <ArrowRight className="w-5 h-5" />
+                  Click this button {2 - bonusClicks} more time{2 - bonusClicks === 1 ? "" : "s"}
+                </span>
+              </Button>
+            )}
             <Button
               className={`w-full h-12 text-lg font-bold transition-all duration-300 ${
                 unlocked ? `bg-gradient-to-r ${gradient} hover:opacity-90 shadow-lg` : "bg-gray-700 text-gray-400 cursor-not-allowed"
@@ -150,7 +179,8 @@ export default function UnlockFacebookPage() {
                 ? <span className="flex items-center gap-2"><Download className="w-5 h-5" />Unlock Link</span>
                 : <span className="flex items-center gap-2"><Lock className="w-4 h-4" />Complete Steps to Unlock</span>}
             </Button>
-            {!unlocked && <p className="text-center text-xs text-gray-500 mt-3">Checking for completion automatically...</p>}
+            {!actionsDone && <p className="text-center text-xs text-gray-500">Checking for completion automatically...</p>}
+            {actionsDone && bonusClicks < 2 && <p className="text-center text-xs text-amber-400">One more step — click the orange button above to unlock!</p>}
           </div>
         </Card>
         <p className="text-center text-xs text-gray-600">Powered by Social Unlock (self-hosted • testing)</p>

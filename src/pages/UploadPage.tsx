@@ -19,7 +19,7 @@ import VideoPreview from "@/components/VideoPreview";
 import VideoEditor from "@/components/VideoEditor";
 import VideoCommentManager from "@/components/VideoCommentManager";
 import TagSelector from "@/components/TagSelector";
-import { getStoredChannels, uploadVideoToYouTube, uploadThumbnail, getUploadDefaults } from "@/lib/youtube-direct";
+import { getStoredChannels, uploadVideoToYouTube, uploadThumbnail, getUploadDefaults, getFreshAccessToken } from "@/lib/youtube-direct";
 import { generateYouTubeSmartLink, generateFacebookSmartLink, translateText } from "@/lib/smart-link-api";
 import { suggestHashtags, improveDescription } from "@/lib/ai-suggest";
 
@@ -89,6 +89,12 @@ const UploadPage = () => {
   const [allowComments, setAllowComments] = useState(true);
   const [allowRatings, setAllowRatings] = useState(true);
   const [repeatCount, setRepeatCount] = useState(1);
+  // How many YouTube channels to upload to in parallel (distributes load across Google API clients/quota)
+  const [ytConcurrency, setYtConcurrency] = useState<number>(() => {
+    const v = parseInt(localStorage.getItem("yt_upload_concurrency") || "3", 10);
+    return Math.max(1, Math.min(5, isNaN(v) ? 3 : v));
+  });
+  useEffect(() => { localStorage.setItem("yt_upload_concurrency", String(ytConcurrency)); }, [ytConcurrency]);
 
   // New YouTube metadata fields
   const [defaultLanguage, setDefaultLanguage] = useState('');
@@ -361,7 +367,7 @@ const UploadPage = () => {
       for (let repeatIdx = 0; repeatIdx < repeatCount; repeatIdx++) {
         const repeatLabel = repeatCount > 1 ? ` (copy ${repeatIdx + 1}/${repeatCount})` : '';
 
-      for (const dest of selected) {
+      const runDest = async (dest: UploadDestination) => {
         // Resolve this destination's language (only meaningful for YouTube; others get original).
         const destLang = (dest.platform === 'youtube' ? channelLangs[dest.id] : '') || originalLangCode;
         const translated = await getTranslated(destLang);
@@ -416,6 +422,12 @@ const UploadPage = () => {
             }
           }
         } else if (dest.platform === 'youtube') {
+          // Refresh OAuth token via edge function — fixes "Failed to fetch" when the stored
+          // browser token has gone stale (long idle session). Mutates dest.accessToken in place.
+          if (dest.channelTokenId) {
+            const fresh = await getFreshAccessToken(dest.channelTokenId);
+            if (fresh) dest.accessToken = fresh;
+          }
           // Use direct upload if we have an access token
           if (dest.accessToken) {
             const finalTitle = (isShort && videoDuration && videoDuration <= 60) ? `${title} #Shorts` : title;
@@ -680,6 +692,20 @@ const UploadPage = () => {
             publishResults.push({ destinationId: dest.id, destinationName: dest.name, platform: 'YouTube', success: res.success, error: res.error });
           }
         }
+      };
+
+      // Dispatch: non-YouTube destinations run sequentially; YouTube destinations run
+      // in parallel chunks of `ytConcurrency` to distribute load across Google API clients
+      // and dramatically speed up mass uploads to many channels.
+      const ytDests = selected.filter(d => d.platform === 'youtube');
+      const otherDests = selected.filter(d => d.platform !== 'youtube');
+      for (const d of otherDests) {
+        await runDest(d);
+      }
+      for (let i = 0; i < ytDests.length; i += ytConcurrency) {
+        const chunk = ytDests.slice(i, i + ytConcurrency);
+        setUploadProgress(`Uploading batch ${Math.floor(i / ytConcurrency) + 1} of ${Math.ceil(ytDests.length / ytConcurrency)} (${chunk.length} channels in parallel)...`);
+        await Promise.all(chunk.map(d => runDest(d)));
       }
       } // end repeatCount loop
 
@@ -1185,6 +1211,14 @@ const UploadPage = () => {
               <Input
                 type="number" min={1} max={10} value={repeatCount}
                 onChange={e => setRepeatCount(Math.max(1, Math.min(10, parseInt(e.target.value) || 1)))}
+                className="w-16 h-10" disabled={uploading}
+              />
+            </div>
+            <div className="flex items-center gap-2" title="How many YouTube channels to upload to in parallel. Higher = faster mass uploads, but uses more bandwidth.">
+              <label className="text-sm font-medium text-foreground whitespace-nowrap">YT Parallel:</label>
+              <Input
+                type="number" min={1} max={5} value={ytConcurrency}
+                onChange={e => setYtConcurrency(Math.max(1, Math.min(5, parseInt(e.target.value) || 1)))}
                 className="w-16 h-10" disabled={uploading}
               />
             </div>

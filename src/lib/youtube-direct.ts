@@ -94,6 +94,23 @@ export async function getStoredChannels(): Promise<StoredYouTubeChannel[]> {
   }));
 }
 
+/**
+ * Get a guaranteed-fresh access token for a stored channel.
+ * Calls youtube-auth `get_token` which refreshes via OAuth if expired/near-expiry.
+ * Solves "Failed to fetch" after the browser session has been idle.
+ */
+export async function getFreshAccessToken(channelTokenId: string): Promise<string | null> {
+  try {
+    const { data, error } = await supabase.functions.invoke("youtube-auth", {
+      body: { action: "get_token", channelTokenId },
+    });
+    if (error || !data?.success) return null;
+    return data.data?.accessToken || null;
+  } catch {
+    return null;
+  }
+}
+
 /** Upload a video directly to YouTube using resumable upload */
 export async function uploadVideoToYouTube(
   accessToken: string,
