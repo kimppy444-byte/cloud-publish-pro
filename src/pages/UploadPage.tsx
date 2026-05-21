@@ -367,7 +367,7 @@ const UploadPage = () => {
       for (let repeatIdx = 0; repeatIdx < repeatCount; repeatIdx++) {
         const repeatLabel = repeatCount > 1 ? ` (copy ${repeatIdx + 1}/${repeatCount})` : '';
 
-      for (const dest of selected) {
+      const runDest = async (dest: UploadDestination) => {
         // Resolve this destination's language (only meaningful for YouTube; others get original).
         const destLang = (dest.platform === 'youtube' ? channelLangs[dest.id] : '') || originalLangCode;
         const translated = await getTranslated(destLang);
@@ -422,6 +422,12 @@ const UploadPage = () => {
             }
           }
         } else if (dest.platform === 'youtube') {
+          // Refresh OAuth token via edge function — fixes "Failed to fetch" when the stored
+          // browser token has gone stale (long idle session). Mutates dest.accessToken in place.
+          if (dest.channelTokenId) {
+            const fresh = await getFreshAccessToken(dest.channelTokenId);
+            if (fresh) dest.accessToken = fresh;
+          }
           // Use direct upload if we have an access token
           if (dest.accessToken) {
             const finalTitle = (isShort && videoDuration && videoDuration <= 60) ? `${title} #Shorts` : title;
