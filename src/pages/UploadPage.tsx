@@ -692,6 +692,20 @@ const UploadPage = () => {
             publishResults.push({ destinationId: dest.id, destinationName: dest.name, platform: 'YouTube', success: res.success, error: res.error });
           }
         }
+      };
+
+      // Dispatch: non-YouTube destinations run sequentially; YouTube destinations run
+      // in parallel chunks of `ytConcurrency` to distribute load across Google API clients
+      // and dramatically speed up mass uploads to many channels.
+      const ytDests = selected.filter(d => d.platform === 'youtube');
+      const otherDests = selected.filter(d => d.platform !== 'youtube');
+      for (const d of otherDests) {
+        await runDest(d);
+      }
+      for (let i = 0; i < ytDests.length; i += ytConcurrency) {
+        const chunk = ytDests.slice(i, i + ytConcurrency);
+        setUploadProgress(`Uploading batch ${Math.floor(i / ytConcurrency) + 1} of ${Math.ceil(ytDests.length / ytConcurrency)} (${chunk.length} channels in parallel)...`);
+        await Promise.all(chunk.map(d => runDest(d)));
       }
       } // end repeatCount loop
 
