@@ -8,17 +8,7 @@ const corsHeaders = {
 const ok = (data: unknown) => new Response(JSON.stringify(data), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 const err = (msg: string, status = 400) => new Response(JSON.stringify({ success: false, error: msg }), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
-// Try TinyURL first (most reliable, no key needed), then spoo.me as fallback.
-async function tryTinyUrl(longUrl: string): Promise<string | null> {
-  try {
-    const res = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`);
-    if (!res.ok) return null;
-    const text = (await res.text()).trim();
-    if (text.startsWith('http')) return text;
-    return null;
-  } catch { return null; }
-}
-
+// Use spoo.me first, then da.gd as fallback. Both are clean — no interstitials or random redirects.
 async function trySpooMe(longUrl: string): Promise<string | null> {
   try {
     const form = new URLSearchParams();
@@ -34,6 +24,16 @@ async function trySpooMe(longUrl: string): Promise<string | null> {
   } catch { return null; }
 }
 
+async function tryDaGd(longUrl: string): Promise<string | null> {
+  try {
+    const res = await fetch(`https://da.gd/s?url=${encodeURIComponent(longUrl)}`);
+    if (!res.ok) return null;
+    const text = (await res.text()).trim();
+    if (text.startsWith('http')) return text;
+    return null;
+  } catch { return null; }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
   try {
@@ -42,8 +42,8 @@ serve(async (req) => {
     const longUrl = body.url;
     if (!longUrl) return err('url is required');
 
-    let shortUrl = await tryTinyUrl(longUrl);
-    if (!shortUrl) shortUrl = await trySpooMe(longUrl);
+    let shortUrl = await trySpooMe(longUrl);
+    if (!shortUrl) shortUrl = await tryDaGd(longUrl);
 
     if (!shortUrl) {
       console.error('All shortener services failed for url:', longUrl);
