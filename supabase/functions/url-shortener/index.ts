@@ -42,8 +42,8 @@ serve(async (req) => {
     const longUrl = body.url;
     if (!longUrl) return err('url is required');
 
-    let shortUrl = await tryTinyUrl(longUrl);
-    if (!shortUrl) shortUrl = await trySpooMe(longUrl);
+    let shortUrl = await trySpooMe(longUrl);
+    if (!shortUrl) shortUrl = await tryDaGd(longUrl);
 
     if (!shortUrl) {
       console.error('All shortener services failed for url:', longUrl);
