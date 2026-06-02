@@ -20,6 +20,8 @@ import ThreadsPage from "./pages/ThreadsPage";
 import FacebookAutoPostPage from "./pages/FacebookAutoPostPage";
 import UnlockYouTubePage from "./pages/UnlockYouTubePage";
 import UnlockFacebookPage from "./pages/UnlockFacebookPage";
+import TermsPage from "./pages/TermsPage";
+import ShortRedirectPage from "./pages/ShortRedirectPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,6 +41,10 @@ const App = () => (
             {/* Public smart-link unlock pages (self-hosted, testing) */}
             <Route path="/u/fb/:postId" element={<UnlockFacebookPage />} />
             <Route path="/u/:videoId" element={<UnlockYouTubePage />} />
+            <Route path="/s/:code" element={<ShortRedirectPage />} />
+            <Route path="/terms" element={<TermsPage />} />
+
+
 
             {/* OAuth callback (public) */}
             <Route path="/youtube-callback" element={<YouTubeCallbackPage />} />

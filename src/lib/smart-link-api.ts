@@ -79,8 +79,10 @@ function base64url(payload: unknown[]): string {
  */
 async function shortenUrl(longUrl: string): Promise<string> {
   try {
+    // When self-hosting, pass origin to use our DB-backed /s/:code shortener (gives analytics).
+    const origin = typeof window !== "undefined" && isSelfHostSmartLinks() ? window.location.origin : undefined;
     const { data, error } = await supabase.functions.invoke('url-shortener', {
-      body: { url: longUrl },
+      body: origin ? { url: longUrl, origin, mode: 'self' } : { url: longUrl },
     });
     if (!error && data?.success && data?.shortUrl) {
       return data.shortUrl;

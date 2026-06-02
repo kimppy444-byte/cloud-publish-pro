@@ -6,9 +6,20 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-async function refreshToken(supabase: any, row: any, clientId: string, clientSecret: string) {
+async function refreshToken(
+  supabase: any,
+  row: any,
+  fallbackClientId: string,
+  fallbackClientSecret: string,
+  clientPairsMap?: Map<string, string>
+) {
   const expiry = new Date(row.token_expiry);
   if (expiry >= new Date(Date.now() + 60000)) return row.access_token;
+
+  // Refresh tokens are bound to the client_id that minted them.
+  // Use the stored client_id if present; fall back to the default for legacy rows.
+  const clientId = row.client_id || fallbackClientId;
+  const clientSecret = (clientPairsMap && clientPairsMap.get(clientId)) || fallbackClientSecret;
 
   const refreshRes = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
@@ -121,12 +132,12 @@ serve(async (req) => {
         if (channel?.id) {
           const { data: existing } = await supabase.from('youtube_tokens').select('id, refresh_token').eq('channel_id', channel.id).maybeSingle();
           if (existing) {
-            await supabase.from('youtube_tokens').update({ access_token: tokens.access_token, refresh_token: tokens.refresh_token || existing.refresh_token, token_expiry: new Date(Date.now() + tokens.expires_in * 1000).toISOString(), channel_title: channel.snippet?.title || null }).eq('id', existing.id);
+            await supabase.from('youtube_tokens').update({ access_token: tokens.access_token, refresh_token: tokens.refresh_token || existing.refresh_token, token_expiry: new Date(Date.now() + tokens.expires_in * 1000).toISOString(), channel_title: channel.snippet?.title || null, client_id: GOOGLE_CLIENT_ID }).eq('id', existing.id);
             return ok({ success: true, data: { channelId: channel.id, channelTitle: channel.snippet?.title, updated: true } });
           }
         }
 
-        const { error: insertError } = await supabase.from('youtube_tokens').insert({ channel_id: channel?.id || null, channel_title: channel?.snippet?.title || null, access_token: tokens.access_token, refresh_token: tokens.refresh_token, token_expiry: new Date(Date.now() + tokens.expires_in * 1000).toISOString() });
+        const { error: insertError } = await supabase.from('youtube_tokens').insert({ channel_id: channel?.id || null, channel_title: channel?.snippet?.title || null, access_token: tokens.access_token, refresh_token: tokens.refresh_token, token_expiry: new Date(Date.now() + tokens.expires_in * 1000).toISOString(), client_id: GOOGLE_CLIENT_ID });
         if (insertError) return err(`Failed to store tokens: ${insertError.message}`);
         return ok({ success: true, data: { channelId: channel?.id, channelTitle: channel?.snippet?.title } });
       }
@@ -147,7 +158,7 @@ serve(async (req) => {
         if (!channelTokenId) return err('channelTokenId is required');
         const { data: row } = await supabase.from('youtube_tokens').select('*').eq('id', channelTokenId).maybeSingle();
         if (!row) return err('Channel not found');
-        const at = await refreshToken(supabase, row, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
+        const at = await refreshToken(supabase, row, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, clientPairsMap);
 
         const [channelRes, searchRes] = await Promise.all([
           fetch(`https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics,contentDetails&id=${row.channel_id}`, { headers: { Authorization: `Bearer ${at}` } }),
@@ -188,7 +199,7 @@ serve(async (req) => {
         if (!channelTokenId) return err('channelTokenId is required');
         const { data: row } = await supabase.from('youtube_tokens').select('*').eq('id', channelTokenId).maybeSingle();
         if (!row) return err('Channel not found');
-        const at = await refreshToken(supabase, row, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
+        const at = await refreshToken(supabase, row, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, clientPairsMap);
 
         // Step 1: Get uploads playlist ID
         const channelRes = await fetch(
@@ -317,7 +328,7 @@ serve(async (req) => {
         if (!channelTokenId || !videoId) return err('channelTokenId and videoId are required');
         const { data: row } = await supabase.from('youtube_tokens').select('*').eq('id', channelTokenId).maybeSingle();
         if (!row) return err('Channel not found');
-        const at = await refreshToken(supabase, row, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
+        const at = await refreshToken(supabase, row, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, clientPairsMap);
 
         const updateRes = await fetch('https://www.googleapis.com/youtube/v3/videos?part=snippet,status', {
           method: 'PUT',
@@ -333,7 +344,7 @@ serve(async (req) => {
         if (!channelTokenId || !videoId) return err('channelTokenId and videoId are required');
         const { data: row } = await supabase.from('youtube_tokens').select('*').eq('id', channelTokenId).maybeSingle();
         if (!row) return err('Channel not found');
-        const at = await refreshToken(supabase, row, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
+        const at = await refreshToken(supabase, row, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, clientPairsMap);
 
         const delRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?id=${videoId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${at}` } });
         if (!delRes.ok && delRes.status !== 204) {
@@ -382,7 +393,7 @@ serve(async (req) => {
           : supabase.from('youtube_tokens').select('*').limit(1).maybeSingle();
         const { data: row } = await query;
         if (!row) return ok({ success: false, error: 'No YouTube account connected' });
-        const at = await refreshToken(supabase, row, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
+        const at = await refreshToken(supabase, row, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, clientPairsMap);
         return ok({ success: true, data: { accessToken: at, channelId: row.channel_id, channelTitle: row.channel_title } });
       }
 
@@ -393,6 +404,19 @@ serve(async (req) => {
           await supabase.from('youtube_tokens').delete().neq('id', '00000000-0000-0000-0000-000000000000');
         }
         return ok({ success: true });
+      }
+
+      case 'check_token_health': {
+        const { data: rows } = await supabase.from('youtube_tokens').select('*');
+        const channels = await Promise.all((rows || []).map(async (row: any) => {
+          try {
+            await refreshToken(supabase, row, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, clientPairsMap);
+            return { id: row.id, channelId: row.channel_id, channelTitle: row.channel_title, healthy: true };
+          } catch (e: any) {
+            return { id: row.id, channelId: row.channel_id, channelTitle: row.channel_title, healthy: false, error: e?.message || 'refresh failed' };
+          }
+        }));
+        return ok({ success: true, data: { channels, brokenCount: channels.filter(c => !c.healthy).length } });
       }
 
       default:

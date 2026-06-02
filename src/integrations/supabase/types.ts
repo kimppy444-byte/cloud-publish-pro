@@ -110,6 +110,27 @@ export type Database = {
         }
         Relationships: []
       }
+      short_url_clicks: {
+        Row: {
+          code: string
+          count: number
+          day: string
+          id: string
+        }
+        Insert: {
+          code: string
+          count?: number
+          day?: string
+          id?: string
+        }
+        Update: {
+          code?: string
+          count?: number
+          day?: string
+          id?: string
+        }
+        Relationships: []
+      }
       short_urls: {
         Row: {
           click_count: number | null
@@ -187,6 +208,7 @@ export type Database = {
           access_token: string
           channel_id: string | null
           channel_title: string | null
+          client_id: string | null
           created_at: string
           id: string
           refresh_token: string
@@ -196,6 +218,7 @@ export type Database = {
           access_token: string
           channel_id?: string | null
           channel_title?: string | null
+          client_id?: string | null
           created_at?: string
           id?: string
           refresh_token: string
@@ -205,6 +228,7 @@ export type Database = {
           access_token?: string
           channel_id?: string | null
           channel_title?: string | null
+          client_id?: string | null
           created_at?: string
           id?: string
           refresh_token?: string

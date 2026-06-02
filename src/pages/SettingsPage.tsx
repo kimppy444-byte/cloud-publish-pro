@@ -11,6 +11,7 @@ import { getFacebookPages, getInstagramAccount } from "@/lib/facebook-api";
 import { getYouTubeAuthUrl, getYouTubeChannels, disconnectYouTube, validateYouTubeConfig, getStoredClientIds, saveClientIds, getActiveClientId, setActiveClientId } from "@/lib/youtube-api";
 import { getUploadDefaults, saveUploadDefaults, type UploadDefaults } from "@/lib/youtube-direct";
 import { isSelfHostSmartLinks, setSelfHostSmartLinks } from "@/lib/smart-link-api";
+import SmartLinkAnalytics from "@/components/SmartLinkAnalytics";
 
 
 interface ConnectedAccount {
@@ -597,6 +598,7 @@ const SettingsPage = () => {
               <Button className="bg-gradient-brand text-primary-foreground hover:opacity-90" onClick={() => toast.success("Settings saved!")}>Save Settings</Button>
             </div>
 
+            <SmartLinkAnalytics />
           </motion.div>
         </TabsContent>
       </Tabs>
