@@ -110,3 +110,8 @@ export async function searchYouTubeVideos(query: string) {
   return invokeYouTubeAuth({ action: 'search_videos', query });
 }
 
+export async function checkYouTubeTokenHealth() {
+  return invokeYouTubeAuth({ action: 'check_token_health' });
+}
+
+

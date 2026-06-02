@@ -6,9 +6,20 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-async function refreshToken(supabase: any, row: any, clientId: string, clientSecret: string) {
+async function refreshToken(
+  supabase: any,
+  row: any,
+  fallbackClientId: string,
+  fallbackClientSecret: string,
+  clientPairsMap?: Map<string, string>
+) {
   const expiry = new Date(row.token_expiry);
   if (expiry >= new Date(Date.now() + 60000)) return row.access_token;
+
+  // Refresh tokens are bound to the client_id that minted them.
+  // Use the stored client_id if present; fall back to the default for legacy rows.
+  const clientId = row.client_id || fallbackClientId;
+  const clientSecret = (clientPairsMap && clientPairsMap.get(clientId)) || fallbackClientSecret;
 
   const refreshRes = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
