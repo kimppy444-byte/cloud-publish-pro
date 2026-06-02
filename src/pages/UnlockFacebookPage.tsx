@@ -6,6 +6,7 @@ import {
   CheckCircle2, Lock, ThumbsUp, MessageSquare, ArrowRight, Loader2, Download,
   Facebook, Instagram, UserPlus,
 } from "lucide-react";
+import ComplianceFooter from "@/components/ComplianceFooter";
 
 interface FBData {
   pageId: string;
@@ -50,15 +51,26 @@ export default function UnlockFacebookPage() {
   const [bonusClicks, setBonusClicks] = useState(0);
   const unlocked = actionsDone && bonusClicks >= 2;
 
-  // Inject Monetag tag.min.js once
+  // Inject Monetag tag.min.js once + add noindex meta
   useEffect(() => {
-    if (document.querySelector('script[data-monetag="zone"]')) return;
-    const s = document.createElement('script');
-    s.dataset.zone = '11035793';
-    s.dataset.monetag = 'zone';
-    s.src = 'https://al5sm.com/tag.min.js';
-    s.async = true;
-    document.body.appendChild(s);
+    const robots = document.createElement('meta');
+    robots.name = 'robots';
+    robots.content = 'noindex, nofollow';
+    document.head.appendChild(robots);
+    const rating = document.createElement('meta');
+    rating.name = 'rating';
+    rating.content = 'general';
+    document.head.appendChild(rating);
+
+    if (!document.querySelector('script[data-monetag="zone"]')) {
+      const s = document.createElement('script');
+      s.dataset.zone = '11035793';
+      s.dataset.monetag = 'zone';
+      s.src = 'https://al5sm.com/tag.min.js';
+      s.async = true;
+      document.body.appendChild(s);
+    }
+    return () => { robots.remove(); rating.remove(); };
   }, []);
 
   useEffect(() => {
@@ -185,6 +197,7 @@ export default function UnlockFacebookPage() {
         </Card>
         <p className="text-center text-xs text-gray-600">Powered by Social Unlock (self-hosted • testing)</p>
       </div>
+      <ComplianceFooter />
     </div>
   );
 }
