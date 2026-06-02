@@ -132,12 +132,12 @@ serve(async (req) => {
         if (channel?.id) {
           const { data: existing } = await supabase.from('youtube_tokens').select('id, refresh_token').eq('channel_id', channel.id).maybeSingle();
           if (existing) {
-            await supabase.from('youtube_tokens').update({ access_token: tokens.access_token, refresh_token: tokens.refresh_token || existing.refresh_token, token_expiry: new Date(Date.now() + tokens.expires_in * 1000).toISOString(), channel_title: channel.snippet?.title || null }).eq('id', existing.id);
+            await supabase.from('youtube_tokens').update({ access_token: tokens.access_token, refresh_token: tokens.refresh_token || existing.refresh_token, token_expiry: new Date(Date.now() + tokens.expires_in * 1000).toISOString(), channel_title: channel.snippet?.title || null, client_id: GOOGLE_CLIENT_ID }).eq('id', existing.id);
             return ok({ success: true, data: { channelId: channel.id, channelTitle: channel.snippet?.title, updated: true } });
           }
         }
 
-        const { error: insertError } = await supabase.from('youtube_tokens').insert({ channel_id: channel?.id || null, channel_title: channel?.snippet?.title || null, access_token: tokens.access_token, refresh_token: tokens.refresh_token, token_expiry: new Date(Date.now() + tokens.expires_in * 1000).toISOString() });
+        const { error: insertError } = await supabase.from('youtube_tokens').insert({ channel_id: channel?.id || null, channel_title: channel?.snippet?.title || null, access_token: tokens.access_token, refresh_token: tokens.refresh_token, token_expiry: new Date(Date.now() + tokens.expires_in * 1000).toISOString(), client_id: GOOGLE_CLIENT_ID });
         if (insertError) return err(`Failed to store tokens: ${insertError.message}`);
         return ok({ success: true, data: { channelId: channel?.id, channelTitle: channel?.snippet?.title } });
       }
@@ -404,6 +404,19 @@ serve(async (req) => {
           await supabase.from('youtube_tokens').delete().neq('id', '00000000-0000-0000-0000-000000000000');
         }
         return ok({ success: true });
+      }
+
+      case 'check_token_health': {
+        const { data: rows } = await supabase.from('youtube_tokens').select('*');
+        const channels = await Promise.all((rows || []).map(async (row: any) => {
+          try {
+            await refreshToken(supabase, row, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, clientPairsMap);
+            return { id: row.id, channelId: row.channel_id, channelTitle: row.channel_title, healthy: true };
+          } catch (e: any) {
+            return { id: row.id, channelId: row.channel_id, channelTitle: row.channel_title, healthy: false, error: e?.message || 'refresh failed' };
+          }
+        }));
+        return ok({ success: true, data: { channels, brokenCount: channels.filter(c => !c.healthy).length } });
       }
 
       default:
