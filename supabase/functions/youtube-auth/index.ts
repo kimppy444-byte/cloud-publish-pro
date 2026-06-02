@@ -158,7 +158,7 @@ serve(async (req) => {
         if (!channelTokenId) return err('channelTokenId is required');
         const { data: row } = await supabase.from('youtube_tokens').select('*').eq('id', channelTokenId).maybeSingle();
         if (!row) return err('Channel not found');
-        const at = await refreshToken(supabase, row, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
+        const at = await refreshToken(supabase, row, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, clientPairsMap);
 
         const [channelRes, searchRes] = await Promise.all([
           fetch(`https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics,contentDetails&id=${row.channel_id}`, { headers: { Authorization: `Bearer ${at}` } }),
@@ -199,7 +199,7 @@ serve(async (req) => {
         if (!channelTokenId) return err('channelTokenId is required');
         const { data: row } = await supabase.from('youtube_tokens').select('*').eq('id', channelTokenId).maybeSingle();
         if (!row) return err('Channel not found');
-        const at = await refreshToken(supabase, row, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
+        const at = await refreshToken(supabase, row, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, clientPairsMap);
 
         // Step 1: Get uploads playlist ID
         const channelRes = await fetch(
@@ -328,7 +328,7 @@ serve(async (req) => {
         if (!channelTokenId || !videoId) return err('channelTokenId and videoId are required');
         const { data: row } = await supabase.from('youtube_tokens').select('*').eq('id', channelTokenId).maybeSingle();
         if (!row) return err('Channel not found');
-        const at = await refreshToken(supabase, row, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
+        const at = await refreshToken(supabase, row, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, clientPairsMap);
 
         const updateRes = await fetch('https://www.googleapis.com/youtube/v3/videos?part=snippet,status', {
           method: 'PUT',
@@ -344,7 +344,7 @@ serve(async (req) => {
         if (!channelTokenId || !videoId) return err('channelTokenId and videoId are required');
         const { data: row } = await supabase.from('youtube_tokens').select('*').eq('id', channelTokenId).maybeSingle();
         if (!row) return err('Channel not found');
-        const at = await refreshToken(supabase, row, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
+        const at = await refreshToken(supabase, row, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, clientPairsMap);
 
         const delRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?id=${videoId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${at}` } });
         if (!delRes.ok && delRes.status !== 204) {
@@ -393,7 +393,7 @@ serve(async (req) => {
           : supabase.from('youtube_tokens').select('*').limit(1).maybeSingle();
         const { data: row } = await query;
         if (!row) return ok({ success: false, error: 'No YouTube account connected' });
-        const at = await refreshToken(supabase, row, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
+        const at = await refreshToken(supabase, row, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, clientPairsMap);
         return ok({ success: true, data: { accessToken: at, channelId: row.channel_id, channelTitle: row.channel_title } });
       }
 
