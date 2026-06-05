@@ -217,3 +217,54 @@ function ActionBtn({ label, icon, colorBg, done, loading, onClick }: {
     </Button>
   );
 }
+
+function YouTubeAutoplayer({ videoId }: { videoId: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const playerRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (!videoId) return;
+    let cancelled = false;
+
+    const loadApi = () => new Promise<void>((resolve) => {
+      if (window.YT && window.YT.Player) return resolve();
+      const existing = document.querySelector('script[src="https://www.youtube.com/iframe_api"]');
+      const prev = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = () => { prev?.(); resolve(); };
+      if (!existing) {
+        const s = document.createElement('script');
+        s.src = 'https://www.youtube.com/iframe_api';
+        document.body.appendChild(s);
+      }
+    });
+
+    loadApi().then(() => {
+      if (cancelled || !containerRef.current) return;
+      playerRef.current = new window.YT.Player(containerRef.current, {
+        videoId,
+        playerVars: {
+          autoplay: 1, mute: 1, controls: 0, rel: 0, showinfo: 0,
+          modestbranding: 1, playsinline: 1, loop: 1, playlist: videoId,
+          disablekb: 1, fs: 0, iv_load_policy: 3,
+        },
+        events: {
+          onReady: (e: any) => { try { e.target.mute(); e.target.playVideo(); } catch {} },
+          onStateChange: (e: any) => {
+            // 2 = paused, 0 = ended → force resume
+            if (e.data === 2 || e.data === 0) {
+              try { e.target.seekTo(e.data === 0 ? 0 : e.target.getCurrentTime(), true); e.target.playVideo(); } catch {}
+            }
+          },
+        },
+      });
+    });
+
+    return () => {
+      cancelled = true;
+      try { playerRef.current?.destroy?.(); } catch {}
+    };
+  }, [videoId]);
+
+  return <div ref={containerRef} className="w-full h-full" />;
+}
+
