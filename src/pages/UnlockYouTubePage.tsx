@@ -16,7 +16,16 @@ export default function UnlockYouTubePage() {
   const [verifying, setVerifying] = useState<Record<string, boolean>>({});
   const [actionsDone, setActionsDone] = useState(false);
   const [bonusClicks, setBonusClicks] = useState(0);
-  const unlocked = actionsDone && bonusClicks >= 2;
+  const [watchedSeconds, setWatchedSeconds] = useState(0);
+  const watchSatisfied = watchedSeconds >= 6;
+  const unlocked = actionsDone && bonusClicks >= 2 && watchSatisfied;
+
+  // Count up to 6 seconds while the page is open (video autoplays muted below)
+  useEffect(() => {
+    if (watchSatisfied) return;
+    const t = setInterval(() => setWatchedSeconds(s => Math.min(6, s + 1)), 1000);
+    return () => clearInterval(t);
+  }, [watchSatisfied]);
 
   // Inject Monetag tag.min.js once + add noindex meta so this URL doesn't get scraped
   useEffect(() => {
@@ -115,17 +124,22 @@ export default function UnlockYouTubePage() {
             <iframe
               width="100%"
               height="100%"
-              src={`https://www.youtube.com/embed/${videoId}?controls=0&showinfo=0&rel=0`}
+              src={`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1&loop=1&playlist=${videoId}`}
               title="YouTube video player"
               frameBorder={0}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              className="opacity-50 group-hover:opacity-100 transition-opacity duration-500"
+              className="w-full h-full"
             />
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="w-16 h-16 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20">
-                <Lock className="w-6 h-6 text-white" />
+            {!watchSatisfied && (
+              <div className="absolute bottom-2 right-2 px-3 py-1 rounded-full bg-black/70 backdrop-blur-md border border-white/10 text-xs font-semibold text-white pointer-events-none">
+                Watching... {6 - watchedSeconds}s
               </div>
-            </div>
+            )}
+            {watchSatisfied && (
+              <div className="absolute bottom-2 right-2 px-3 py-1 rounded-full bg-green-600/90 backdrop-blur-md text-xs font-semibold text-white flex items-center gap-1 pointer-events-none">
+                <CheckCircle2 className="w-3 h-3" /> Watch verified
+              </div>
+            )}
           </div>
           <div className="p-6 space-y-4">
             {actions.subscribe && (
