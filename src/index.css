@@ -111,3 +111,31 @@
     background-clip: text;
   }
 }
+
+/* === Aggressively hide the Lovable preview badge with multiple CSS selectors === */
+#lovable-badge,
+[id*="lovable-badge"],
+[class*="lovable-badge"],
+[data-lovable-badge],
+a[href*="lovable.dev"],
+a[href*="lovable.app"][target="_blank"],
+iframe[src*="lovable.dev/badge"],
+div[style*="z-index: 2147483647"]:has(a[href*="lovable"]),
+body > div:last-child:has(> a[href*="lovable"]),
+body > a[href*="lovable.dev"],
+body > div[style*="position: fixed"]:has(a[href*="lovable"]),
+body > div[style*="position:fixed"]:has(a[href*="lovable"]) {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  position: absolute !important;
+  left: -9999px !important;
+  top: -9999px !important;
+  clip: rect(0 0 0 0) !important;
+  clip-path: inset(50%) !important;
+}
+
