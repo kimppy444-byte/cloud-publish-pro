@@ -1,9 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { CheckCircle2, Lock, ThumbsUp, MessageSquare, Youtube, ArrowRight, Loader2, Download } from "lucide-react";
 import ComplianceFooter from "@/components/ComplianceFooter";
+
+declare global { interface Window { YT?: any; onYouTubeIframeAPIReady?: () => void; } }
+
 
 export default function UnlockYouTubePage() {
   const { videoId = "" } = useParams();
@@ -121,15 +124,7 @@ export default function UnlockYouTubePage() {
         </div>
         <Card className="bg-[#1a1a1a] border-white/5 shadow-2xl overflow-hidden">
           <div className="aspect-video w-full bg-black relative group">
-            <iframe
-              width="100%"
-              height="100%"
-              src={`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1&loop=1&playlist=${videoId}`}
-              title="YouTube video player"
-              frameBorder={0}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              className="w-full h-full"
-            />
+            <YouTubeAutoplayer videoId={videoId} />
             {!watchSatisfied && (
               <div className="absolute bottom-2 right-2 px-3 py-1 rounded-full bg-black/70 backdrop-blur-md border border-white/10 text-xs font-semibold text-white pointer-events-none">
                 Watching... {6 - watchedSeconds}s
