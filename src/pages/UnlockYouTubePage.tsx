@@ -107,6 +107,15 @@ export default function UnlockYouTubePage() {
 
   return (
     <div className="min-h-screen bg-[#0f0f0f] text-white flex flex-col items-center justify-center p-4">
+      {/* Bridge page — excluded from AdSense crawl per Google policy */}
+      {typeof document !== "undefined" && (() => {
+        const id = "robots-noindex";
+        if (!document.querySelector(`meta[name="robots"]#${id}`)) {
+          const m = document.createElement("meta");
+          m.name = "robots"; m.id = id; m.content = "noindex,nofollow"; document.head.appendChild(m);
+        }
+        return null;
+      })()}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-600/20 blur-[120px] rounded-full" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/20 blur-[120px] rounded-full" />
