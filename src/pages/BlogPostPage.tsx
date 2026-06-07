@@ -1,0 +1,160 @@
+import { Link, useParams } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
+import { ArrowLeft, Clock, Calendar } from "lucide-react";
+import { posts } from "@/content/posts";
+import AdSlot from "@/components/AdSlot";
+
+function renderBody(md: string) {
+  // Lightweight markdown renderer for our editorial content.
+  const blocks = md.split(/\n\n+/);
+  return blocks.map((block, i) => {
+    const trimmed = block.trim();
+    if (trimmed.startsWith("### ")) {
+      return (
+        <h3 key={i} className="text-xl md:text-2xl font-bold mt-10 mb-3 text-white">
+          {trimmed.slice(4)}
+        </h3>
+      );
+    }
+    if (trimmed.startsWith("## ")) {
+      return (
+        <h2 key={i} className="text-2xl md:text-3xl font-bold mt-12 mb-4 text-white">
+          {trimmed.slice(3)}
+        </h2>
+      );
+    }
+    // Inline bold **text**
+    const parts = trimmed.split(/(\*\*[^*]+\*\*)/g);
+    return (
+      <p key={i} className="text-gray-300 leading-relaxed mb-5 text-[17px]">
+        {parts.map((part, j) =>
+          part.startsWith("**") && part.endsWith("**") ? (
+            <strong key={j} className="text-white font-semibold">{part.slice(2, -2)}</strong>
+          ) : (
+            <span key={j}>{part}</span>
+          )
+        )}
+      </p>
+    );
+  });
+}
+
+export default function BlogPostPage() {
+  const { slug } = useParams();
+  const post = posts.find((p) => p.slug === slug);
+
+  if (!post) {
+    return (
+      <div className="max-w-2xl mx-auto px-6 py-24 text-center">
+        <h1 className="text-3xl font-bold mb-4">Article not found</h1>
+        <p className="text-gray-400 mb-6">The article you were looking for may have been moved.</p>
+        <Link to="/" className="text-red-400 hover:underline">Back to homepage</Link>
+      </div>
+    );
+  }
+
+  const related = posts
+    .filter((p) => p.slug !== post.slug && (p.category === post.category || p.tags.some((t) => post.tags.includes(t))))
+    .slice(0, 3);
+
+  const url = `https://cloud-publish-pro.lovable.app/blog/${post.slug}`;
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: post.title,
+    description: post.excerpt,
+    author: { "@type": "Person", name: post.author },
+    datePublished: post.publishedAt,
+    dateModified: post.publishedAt,
+    publisher: {
+      "@type": "Organization",
+      name: "Creator Cloud",
+      url: "https://cloud-publish-pro.lovable.app",
+    },
+    mainEntityOfPage: { "@type": "WebPage", "@id": url },
+  };
+
+  const body = renderBody(post.body);
+  // Insert mid-article ad after ~40% of paragraphs
+  const adIndex = Math.floor(body.length * 0.4);
+  const withAd = [
+    ...body.slice(0, adIndex),
+    <AdSlot key="mid-ad" slot="3333333333" />,
+    ...body.slice(adIndex),
+  ];
+
+  return (
+    <>
+      <Helmet>
+        <title>{post.title} — Creator Cloud</title>
+        <meta name="description" content={post.excerpt} />
+        <link rel="canonical" href={url} />
+        <meta property="og:type" content="article" />
+        <meta property="og:title" content={post.title} />
+        <meta property="og:description" content={post.excerpt} />
+        <meta property="og:url" content={url} />
+        <meta property="article:published_time" content={post.publishedAt} />
+        <meta property="article:author" content={post.author} />
+        <meta property="article:section" content={post.category} />
+        <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
+      </Helmet>
+
+      <article className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
+        <Link to="/" className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white mb-8">
+          <ArrowLeft className="w-4 h-4" /> All articles
+        </Link>
+
+        <p className="text-xs font-semibold tracking-[0.2em] text-red-400 uppercase mb-3">{post.category}</p>
+        <h1 className="text-3xl md:text-5xl font-bold leading-tight mb-5">{post.title}</h1>
+        <p className="text-lg text-gray-400 mb-6 leading-relaxed">{post.excerpt}</p>
+
+        <div className="flex items-center gap-4 text-sm text-gray-500 pb-6 border-b border-white/5 mb-10">
+          <span>By <strong className="text-gray-300 font-medium">{post.author}</strong></span>
+          <span className="inline-flex items-center gap-1">
+            <Calendar className="w-3.5 h-3.5" />
+            {new Date(post.publishedAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <Clock className="w-3.5 h-3.5" /> {post.readingMinutes} min read
+          </span>
+        </div>
+
+        <AdSlot slot="4444444444" />
+
+        <div className="prose-content">{withAd}</div>
+
+        <div className="mt-12 pt-8 border-t border-white/5 flex flex-wrap gap-2">
+          {post.tags.map((tag) => (
+            <span key={tag} className="text-xs px-3 py-1 rounded-full bg-white/5 text-gray-400">
+              #{tag}
+            </span>
+          ))}
+        </div>
+
+        <AdSlot slot="5555555555" />
+
+        {related.length > 0 && (
+          <section className="mt-16">
+            <h2 className="text-sm font-semibold uppercase tracking-widest text-gray-500 mb-4">
+              Keep reading
+            </h2>
+            <div className="grid sm:grid-cols-3 gap-4">
+              {related.map((r) => (
+                <Link
+                  key={r.slug}
+                  to={`/blog/${r.slug}`}
+                  className="block p-4 rounded-lg border border-white/5 bg-white/[0.02] hover:bg-white/[0.05] transition-colors"
+                >
+                  <span className="text-[10px] font-semibold tracking-[0.18em] uppercase text-red-400/80">
+                    {r.category}
+                  </span>
+                  <h3 className="text-sm font-semibold mt-1 leading-snug text-gray-100">{r.title}</h3>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+      </article>
+    </>
+  );
+}
