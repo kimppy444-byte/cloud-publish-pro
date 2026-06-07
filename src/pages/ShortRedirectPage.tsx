@@ -13,6 +13,13 @@ export default function ShortRedirectPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Mark as noindex — bridge page, excluded from AdSense and search crawl.
+    const m = document.createElement("meta");
+    m.name = "robots"; m.content = "noindex,nofollow"; document.head.appendChild(m);
+    return () => { try { m.remove(); } catch {} };
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
     (async () => {
       if (!code) { setError("Missing code"); return; }
