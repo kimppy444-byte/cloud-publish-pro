@@ -29,35 +29,36 @@ const navGroups = [
   {
     label: "Main",
     items: [
-      { to: "/", icon: LayoutDashboard, label: "Dashboard" },
-      { to: "/analytics", icon: BarChart3, label: "Analytics" },
+      { to: "/admin", icon: LayoutDashboard, label: "Dashboard" },
+      { to: "/admin/analytics", icon: BarChart3, label: "Analytics" },
     ],
   },
   {
     label: "YouTube",
     items: [
-      { to: "/upload", icon: Upload, label: "Upload Video" },
-      { to: "/bulk-upload", icon: Youtube, label: "Bulk Upload" },
-      { to: "/my-videos", icon: Video, label: "My Videos" },
+      { to: "/admin/upload", icon: Upload, label: "Upload Video" },
+      { to: "/admin/bulk-upload", icon: Youtube, label: "Bulk Upload" },
+      { to: "/admin/my-videos", icon: Video, label: "My Videos" },
     ],
   },
   {
     label: "Social",
     items: [
-      { to: "/social", icon: Facebook, label: "Facebook & IG" },
-      { to: "/fb-auto-post", icon: CalendarClock, label: "FB Auto-Post" },
-      { to: "/ig-auto-reply", icon: Instagram, label: "IG Auto-Reply" },
-      { to: "/twitter", icon: XIcon, label: "X (Twitter)" },
-      { to: "/threads", icon: AtSign, label: "Threads" },
+      { to: "/admin/social", icon: Facebook, label: "Facebook & IG" },
+      { to: "/admin/fb-auto-post", icon: CalendarClock, label: "FB Auto-Post" },
+      { to: "/admin/ig-auto-reply", icon: Instagram, label: "IG Auto-Reply" },
+      { to: "/admin/twitter", icon: XIcon, label: "X (Twitter)" },
+      { to: "/admin/threads", icon: AtSign, label: "Threads" },
     ],
   },
   {
     label: "Account",
     items: [
-      { to: "/settings", icon: Settings, label: "Settings" },
+      { to: "/admin/settings", icon: Settings, label: "Settings" },
     ],
   },
 ];
+
 
 const AppSidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
