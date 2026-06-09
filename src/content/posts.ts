@@ -13,7 +13,7 @@ export type Post = {
   tags: string[];
 };
 
-const A = "Jesse Kanhai";
+const A = "Alex Rivera";
 const M = "Mira Okafor";
 const D = "Dev Patel";
 
