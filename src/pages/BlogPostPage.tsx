@@ -155,7 +155,8 @@ export default function BlogPostPage() {
         <meta property="article:published_time" content={post.publishedAt} />
         <meta property="article:author" content={post.author} />
         <meta property="article:section" content={post.category} />
-        <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
+        <script type="application/ld+json">{JSON.stringify(articleSchema)}</script>
+        <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>
       </Helmet>
 
       <article className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
