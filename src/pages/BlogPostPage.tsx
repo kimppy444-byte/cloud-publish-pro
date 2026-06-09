@@ -58,20 +58,79 @@ export default function BlogPostPage() {
     .slice(0, 3);
 
   const url = `https://cloud-publish-pro.lovable.app/blog/${post.slug}`;
-  const jsonLd = {
+  const wordCount = post.body.split(/\s+/).filter(Boolean).length;
+
+  // Tag → entity URL map for AEO/GEO entity grounding. Helps LLMs and
+  // search engines disambiguate what the article is "about".
+  const ENTITY: Record<string, { name: string; sameAs: string }> = {
+    youtube: { name: "YouTube", sameAs: "https://en.wikipedia.org/wiki/YouTube" },
+    shorts: { name: "YouTube Shorts", sameAs: "https://en.wikipedia.org/wiki/YouTube_Shorts" },
+    tiktok: { name: "TikTok", sameAs: "https://en.wikipedia.org/wiki/TikTok" },
+    instagram: { name: "Instagram", sameAs: "https://en.wikipedia.org/wiki/Instagram" },
+    reels: { name: "Instagram Reels", sameAs: "https://en.wikipedia.org/wiki/Instagram#Reels" },
+    twitter: { name: "X (Twitter)", sameAs: "https://en.wikipedia.org/wiki/Twitter" },
+    adsense: { name: "Google AdSense", sameAs: "https://en.wikipedia.org/wiki/Google_AdSense" },
+    rpm: { name: "Revenue per mille", sameAs: "https://en.wikipedia.org/wiki/Revenue_per_mille" },
+    patreon: { name: "Patreon", sameAs: "https://en.wikipedia.org/wiki/Patreon" },
+    substack: { name: "Substack", sameAs: "https://en.wikipedia.org/wiki/Substack" },
+    podcast: { name: "Podcast", sameAs: "https://en.wikipedia.org/wiki/Podcast" },
+    newsletter: { name: "Email newsletter", sameAs: "https://en.wikipedia.org/wiki/Newsletter" },
+    seo: { name: "Search engine optimization", sameAs: "https://en.wikipedia.org/wiki/Search_engine_optimization" },
+    monetization: { name: "Content monetization", sameAs: "https://en.wikipedia.org/wiki/Monetization" },
+  };
+  const entities = post.tags
+    .map((t) => ENTITY[t.toLowerCase()])
+    .filter(Boolean)
+    .map((e) => ({ "@type": "Thing", name: e!.name, sameAs: e!.sameAs }));
+
+  const articleSchema = {
     "@context": "https://schema.org",
     "@type": "Article",
     headline: post.title,
     description: post.excerpt,
-    author: { "@type": "Person", name: post.author },
+    articleSection: post.category,
+    keywords: post.tags.join(", "),
+    wordCount,
+    inLanguage: "en",
+    author: {
+      "@type": "Person",
+      name: post.author,
+      url: `https://cloud-publish-pro.lovable.app/about#${post.author.toLowerCase().replace(/\s+/g, "-")}`,
+    },
     datePublished: post.publishedAt,
     dateModified: post.publishedAt,
     publisher: {
       "@type": "Organization",
+      "@id": "https://cloud-publish-pro.lovable.app/#organization",
       name: "Creator Cloud",
-      url: "https://cloud-publish-pro.lovable.app",
+      logo: {
+        "@type": "ImageObject",
+        url: "https://cloud-publish-pro.lovable.app/placeholder.svg",
+      },
     },
     mainEntityOfPage: { "@type": "WebPage", "@id": url },
+    speakable: {
+      "@type": "SpeakableSpecification",
+      cssSelector: [".prose-content p", "h1", "h2"],
+    },
+    about: entities.length ? entities.slice(0, 3) : undefined,
+    mentions: entities.length ? entities : undefined,
+    isAccessibleForFree: true,
+  };
+
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: "https://cloud-publish-pro.lovable.app/" },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: post.category,
+        item: `https://cloud-publish-pro.lovable.app/category/${post.category.toLowerCase()}`,
+      },
+      { "@type": "ListItem", position: 3, name: post.title, item: url },
+    ],
   };
 
   const body = renderBody(post.body);
@@ -96,7 +155,8 @@ export default function BlogPostPage() {
         <meta property="article:published_time" content={post.publishedAt} />
         <meta property="article:author" content={post.author} />
         <meta property="article:section" content={post.category} />
-        <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
+        <script type="application/ld+json">{JSON.stringify(articleSchema)}</script>
+        <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>
       </Helmet>
 
       <article className="max-w-3xl mx-auto px-4 sm:px-6 py-10">

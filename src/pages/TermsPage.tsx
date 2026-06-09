@@ -1,9 +1,15 @@
 import { Link } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 
 export default function TermsPage() {
   return (
     <div className="min-h-screen bg-[#0f0f0f] text-gray-200 p-6 md:p-12">
+      <Helmet>
+        <title>Terms of Service — Creator Cloud</title>
+        <meta name="description" content="Terms of service, acceptable use, and DMCA procedures for Creator Cloud." />
+        <link rel="canonical" href="https://cloud-publish-pro.lovable.app/terms" />
+      </Helmet>
       <div className="max-w-3xl mx-auto space-y-8">
         <div className="flex items-center justify-between">
           <Link to="/" className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white">

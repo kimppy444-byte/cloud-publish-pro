@@ -50,6 +50,26 @@ export default function HomePage() {
         <link rel="canonical" href={`https://cloud-publish-pro.lovable.app${category ? `/category/${category}` : "/"}`} />
         <meta property="og:title" content={pageTitle} />
         <meta property="og:description" content={pageDesc} />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "CollectionPage",
+          name: pageTitle,
+          description: pageDesc,
+          url: `https://cloud-publish-pro.lovable.app${category ? `/category/${category}` : "/"}`,
+          inLanguage: "en",
+          isPartOf: { "@id": "https://cloud-publish-pro.lovable.app/#website" },
+          publisher: { "@id": "https://cloud-publish-pro.lovable.app/#organization" },
+          mainEntity: {
+            "@type": "ItemList",
+            numberOfItems: visible.length,
+            itemListElement: visible.slice(0, 20).map((p, i) => ({
+              "@type": "ListItem",
+              position: i + 1,
+              url: `https://cloud-publish-pro.lovable.app/blog/${p.slug}`,
+              name: p.title,
+            })),
+          },
+        })}</script>
       </Helmet>
 
       <section className="border-b border-white/5">
