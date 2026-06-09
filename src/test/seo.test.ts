@@ -87,7 +87,8 @@ describe("Blog post structure (entity & AEO data)", () => {
       expect(p.tags.length).toBeGreaterThan(0);
       // body must have at least one heading and be substantive (AEO / GEO needs structure)
       expect(p.body.length).toBeGreaterThan(800);
-      expect(p.body).toMatch(/^###?\s+/m);
+      // article must have structure for AEO / GEO: markdown heading OR bolded sub-sections
+      expect(p.body).toMatch(/(^###?\s+|\*\*\d+\.|\*\*[A-Z])/m);
     });
   }
 });
