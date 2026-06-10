@@ -191,6 +191,42 @@ export default function BlogPostPage() {
           ))}
         </div>
 
+        {post.smartLinks && post.smartLinks.length > 0 && (
+          <section className="mt-12">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-red-400 mb-3">
+              Free resources mentioned in this article
+            </p>
+            <p className="text-sm text-gray-400 mb-4">
+              The downloads below are free. Please support the site by viewing the sponsor message before unlocking.
+            </p>
+            {/* Sponsor ad — user must scroll past this to reach the unlock buttons. */}
+            <AdSlot slot="6666666666" />
+            <div className="grid sm:grid-cols-2 gap-3 mt-4">
+              {post.smartLinks.map((link) => (
+                <a
+                  key={link.url}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener nofollow"
+                  className="group flex items-start gap-3 p-4 rounded-xl border border-red-500/20 bg-gradient-to-br from-red-500/10 to-orange-500/5 hover:from-red-500/20 hover:to-orange-500/10 transition-colors"
+                >
+                  <Lock className="w-4 h-4 text-red-400 mt-1 shrink-0 group-hover:hidden" />
+                  <ExternalLink className="w-4 h-4 text-red-400 mt-1 shrink-0 hidden group-hover:block" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-gray-100 text-sm leading-snug">{link.label}</p>
+                    {link.description && (
+                      <p className="text-xs text-gray-400 mt-1">{link.description}</p>
+                    )}
+                    <p className="text-[10px] uppercase tracking-widest text-red-400/80 mt-2">
+                      Unlock free →
+                    </p>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </section>
+        )}
+
         <AdSlot slot="5555555555" />
 
         {related.length > 0 && (
