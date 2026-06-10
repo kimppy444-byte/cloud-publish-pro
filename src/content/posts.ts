@@ -1,6 +1,12 @@
 // Editorial articles for Creator Cloud. Original content authored for this site
 // in the Creator Economy / Digital Tools niche. Each post: ~600-1100 words.
 
+export type SmartLink = {
+  label: string;
+  url: string;       // bridge route like /u/<id> or /s/<id>, or external
+  description?: string;
+};
+
 export type Post = {
   slug: string;
   title: string;
@@ -11,6 +17,7 @@ export type Post = {
   readingMinutes: number;
   body: string; // markdown-ish, rendered with simple paragraph splitter
   tags: string[];
+  smartLinks?: SmartLink[]; // optional gated resources rendered below ads
 };
 
 const A = "COMBO_WICK";
