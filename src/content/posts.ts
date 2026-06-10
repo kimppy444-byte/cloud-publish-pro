@@ -60,6 +60,10 @@ The creators we know who treat Shorts as a real income stream typically pair it 
 ### The takeaway
 
 Stop comparing your Shorts RPM to another creator's screenshot. Their geography, niche, and average view duration are different from yours. Build for the audience that pays — viewers in Tier-1 countries who watch your clip to completion — and let the platform pay you whatever the pool happens to be that month.`,
+    smartLinks: [
+      { label: "Free Shorts RPM calculator (Google Sheet)", url: "/u/rpm-calc", description: "Plug in your geo split and average view duration." },
+      { label: "30-day Shorts publishing template", url: "/u/shorts-template", description: "Hooks, retention beats, and CTA scripts we use ourselves." },
+    ],
   },
   {
     slug: "best-free-video-editors-for-youtubers-2026",
