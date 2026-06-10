@@ -1,6 +1,6 @@
 import { Link, useParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
-import { ArrowLeft, Clock, Calendar } from "lucide-react";
+import { ArrowLeft, Clock, Calendar, Lock, ExternalLink } from "lucide-react";
 import { posts } from "@/content/posts";
 import AdSlot from "@/components/AdSlot";
 
