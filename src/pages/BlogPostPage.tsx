@@ -42,7 +42,12 @@ function renderBody(md: string) {
 
 export default function BlogPostPage() {
   const { slug } = useParams();
+  const [searchParams] = useSearchParams();
   const post = posts.find((p) => p.slug === slug);
+  const unlock = (() => {
+    const token = searchParams.get("u");
+    return token ? decodeBlogUnlock(token) : null;
+  })();
 
   if (!post) {
     return (
