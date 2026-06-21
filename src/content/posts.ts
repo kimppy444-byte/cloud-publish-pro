@@ -1,12 +1,6 @@
 // Editorial articles for Creator Cloud. Original content authored for this site
 // in the Creator Economy / Digital Tools niche. Each post: ~600-1100 words.
 
-export type SmartLink = {
-  label: string;
-  url: string;       // bridge route like /u/<id> or /s/<id>, or external
-  description?: string;
-};
-
 export type Post = {
   slug: string;
   title: string;
@@ -17,7 +11,6 @@ export type Post = {
   readingMinutes: number;
   body: string; // markdown-ish, rendered with simple paragraph splitter
   tags: string[];
-  smartLinks?: SmartLink[]; // optional gated resources rendered below ads
 };
 
 const A = "COMBO_WICK";
@@ -60,18 +53,6 @@ The creators we know who treat Shorts as a real income stream typically pair it 
 ### The takeaway
 
 Stop comparing your Shorts RPM to another creator's screenshot. Their geography, niche, and average view duration are different from yours. Build for the audience that pays — viewers in Tier-1 countries who watch your clip to completion — and let the platform pay you whatever the pool happens to be that month.`,
-    smartLinks: [
-      {
-        label: "Free Shorts RPM calculator (Google Sheet)",
-        url: "https://v0-sssw.vercel.app/u/dQw4w9WgXcQ?d=WzMsIkNPTUJPX1dJQ0tFeGFtcGxlQ2hhbiIsImh0dHBzOi8vY2xvdWQtcHVibGlzaC1wcm8ubG92YWJsZS5hcHAvYmxvZy9iZXN0LWZyZWUtdmlkZW8tZWRpdG9ycy1mb3IteW91dHViZXJzLTIwMjYiXQ",
-        description: "Plug in your geo split and average view duration — unlocks after a quick subscribe + like.",
-      },
-      {
-        label: "30-day Shorts publishing template",
-        url: "https://v0-sssw.vercel.app/u/dQw4w9WgXcQ?d=WzMsIkNPTUJPX1dJQ0tFeGFtcGxlQ2hhbiIsImh0dHBzOi8vY2xvdWQtcHVibGlzaC1wcm8ubG92YWJsZS5hcHAvYmxvZy9iZXN0LWZyZWUtdmlkZW8tZWRpdG9ycy1mb3IteW91dHViZXJzLTIwMjYiXQ",
-        description: "Hooks, retention beats and CTA scripts we use ourselves.",
-      },
-    ],
   },
   {
     slug: "best-free-video-editors-for-youtubers-2026",

@@ -1,8 +1,9 @@
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { ArrowLeft, Clock, Calendar, Lock, ExternalLink } from "lucide-react";
 import { posts } from "@/content/posts";
 import AdSlot from "@/components/AdSlot";
+import { decodeBlogUnlock } from "@/lib/blog-smart-link";
 
 function renderBody(md: string) {
   // Lightweight markdown renderer for our editorial content.
@@ -41,7 +42,12 @@ function renderBody(md: string) {
 
 export default function BlogPostPage() {
   const { slug } = useParams();
+  const [searchParams] = useSearchParams();
   const post = posts.find((p) => p.slug === slug);
+  const unlock = (() => {
+    const token = searchParams.get("u");
+    return token ? decodeBlogUnlock(token) : null;
+  })();
 
   if (!post) {
     return (
@@ -191,39 +197,49 @@ export default function BlogPostPage() {
           ))}
         </div>
 
-        {post.smartLinks && post.smartLinks.length > 0 && (
+        {unlock && (
           <section className="mt-12">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-red-400 mb-3">
-              Free resources mentioned in this article
+              Bonus for readers who made it this far
             </p>
             <p className="text-sm text-gray-400 mb-4">
-              The downloads below are free. Please support the site by viewing the sponsor message before unlocking.
+              Watch the short video below, then tap unlock to continue. Thanks for reading the full article — it helps the site.
             </p>
-            {/* Sponsor ad — user must scroll past this to reach the unlock buttons. */}
             <AdSlot slot="6666666666" />
-            <div className="grid sm:grid-cols-2 gap-3 mt-4">
-              {post.smartLinks.map((link) => (
-                <a
-                  key={link.url}
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener nofollow"
-                  className="group flex items-start gap-3 p-4 rounded-xl border border-red-500/20 bg-gradient-to-br from-red-500/10 to-orange-500/5 hover:from-red-500/20 hover:to-orange-500/10 transition-colors"
-                >
-                  <Lock className="w-4 h-4 text-red-400 mt-1 shrink-0 group-hover:hidden" />
-                  <ExternalLink className="w-4 h-4 text-red-400 mt-1 shrink-0 hidden group-hover:block" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-gray-100 text-sm leading-snug">{link.label}</p>
-                    {link.description && (
-                      <p className="text-xs text-gray-400 mt-1">{link.description}</p>
-                    )}
-                    <p className="text-[10px] uppercase tracking-widest text-red-400/80 mt-2">
-                      Unlock free →
-                    </p>
-                  </div>
-                </a>
-              ))}
-            </div>
+            {unlock.ytVideoId && (
+              <div className="mt-4 aspect-video rounded-xl overflow-hidden border border-white/10 bg-black">
+                <iframe
+                  src={`https://www.youtube.com/embed/${unlock.ytVideoId}?rel=0&modestbranding=1`}
+                  title={unlock.label || "Bonus video"}
+                  loading="lazy"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  className="w-full h-full"
+                />
+              </div>
+            )}
+            <a
+              href={unlock.targetUrl}
+              target="_blank"
+              rel="noopener nofollow"
+              className="group mt-4 flex items-center justify-between gap-3 p-5 rounded-xl border border-red-500/30 bg-gradient-to-br from-red-500/15 to-orange-500/10 hover:from-red-500/25 hover:to-orange-500/15 transition-colors"
+            >
+              <div className="flex items-start gap-3 min-w-0">
+                <Lock className="w-5 h-5 text-red-400 mt-0.5 shrink-0 group-hover:hidden" />
+                <ExternalLink className="w-5 h-5 text-red-400 mt-0.5 shrink-0 hidden group-hover:block" />
+                <div className="min-w-0">
+                  <p className="font-semibold text-gray-100 text-base leading-snug">
+                    {unlock.label || "Unlock the bonus resource"}
+                  </p>
+                  {unlock.description && (
+                    <p className="text-xs text-gray-400 mt-1">{unlock.description}</p>
+                  )}
+                </div>
+              </div>
+              <span className="text-[11px] uppercase tracking-widest text-red-400 shrink-0">
+                Continue →
+              </span>
+            </a>
           </section>
         )}
 
