@@ -70,6 +70,7 @@ const App = () => (
             {/* Bridge / unlock pages — noindex via robots, kept outside PublicLayout */}
             <Route path="/u/fb/:postId" element={<UnlockFacebookPage />} />
             <Route path="/u/:videoId" element={<UnlockYouTubePage />} />
+            <Route path="/article/:id" element={<ArticleUnlockPage />} />
             <Route path="/s/:code" element={<ShortRedirectPage />} />
             <Route path="/youtube-callback" element={<YouTubeCallbackPage />} />
 
