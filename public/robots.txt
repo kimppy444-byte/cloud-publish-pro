@@ -4,6 +4,7 @@ Disallow: /admin
 Disallow: /admin/
 Disallow: /u/
 Disallow: /s/
+Disallow: /article/
 Disallow: /youtube-callback
 
 Sitemap: https://cloud-publish-pro.lovable.app/sitemap.xml
