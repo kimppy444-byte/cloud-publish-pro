@@ -139,3 +139,9 @@ body > div[style*="position:fixed"]:has(a[href*="lovable"]) {
   clip-path: inset(50%) !important;
 }
 
+
+/* Collapse ad slots that AdSense hasn't filled, so empty placeholders never
+   leave a giant gap on the page (especially important pre-AdSense-approval). */
+.ad-slot-wrapper:has(.adsbygoogle:not([data-ad-status="filled"])) {
+  display: none;
+}
