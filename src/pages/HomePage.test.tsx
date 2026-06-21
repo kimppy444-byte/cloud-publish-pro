@@ -26,8 +26,8 @@ describe("HomePage (visual-regression guard)", () => {
 
   it("the weekly panel lists at least 3 recent posts with links", () => {
     const { container } = renderAt("/");
-    const heading = Array.from(container.querySelectorAll("p"))
-      .find((el) => /this week on creator cloud/i.test(el.textContent ?? ""));
+    const paragraphs = Array.from(container.querySelectorAll<HTMLParagraphElement>("p"));
+    const heading = paragraphs.find((el) => /this week on creator cloud/i.test(el.textContent ?? ""));
     expect(heading).toBeTruthy();
     const panel = heading?.parentElement;
     const links = panel?.querySelectorAll('a[href^="/blog/"]') ?? [];
