@@ -1,8 +1,9 @@
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { ArrowLeft, Clock, Calendar, Lock, ExternalLink } from "lucide-react";
 import { posts } from "@/content/posts";
 import AdSlot from "@/components/AdSlot";
+import { decodeBlogUnlock } from "@/lib/blog-smart-link";
 
 function renderBody(md: string) {
   // Lightweight markdown renderer for our editorial content.
