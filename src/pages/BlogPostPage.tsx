@@ -151,7 +151,7 @@ export default function BlogPostPage() {
   return (
     <>
       <Helmet>
-        <title>{post.title} — Creator Cloud</title>
+        <title>{post.title.length > 60 ? post.title.slice(0, 57) + "…" : post.title}</title>
         <meta name="description" content={post.excerpt} />
         <link rel="canonical" href={url} />
         <meta property="og:type" content="article" />
