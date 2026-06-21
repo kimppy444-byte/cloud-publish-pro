@@ -457,7 +457,7 @@ const BulkUploadPage = () => {
                   {video.thumbnailPreview ? (
                     <div className="space-y-2">
                       <div className="relative border-2 border-border rounded-lg overflow-hidden aspect-video">
-                        <img src={video.thumbnailPreview} alt="Thumbnail" className="w-full h-full object-cover" />
+                        <img src={video.thumbnailPreview} alt="Custom video thumbnail preview" className="w-full h-full object-cover" />
                         <Button variant="destructive" size="sm" className="absolute top-2 right-2 h-7 w-7 p-0"
                           onClick={() => updateVideo(video.id, { thumbnail: null, thumbnailPreview: null })}>
                           <Trash2 className="w-3.5 h-3.5" />

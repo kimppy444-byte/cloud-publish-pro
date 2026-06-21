@@ -781,7 +781,7 @@ const UploadPage = () => {
                 {/* Thumbnail overlay */}
                 {thumbnailPreview && (
                   <div className="absolute top-3 right-3 w-24 h-16 rounded-lg overflow-hidden border-2 border-border shadow-lg">
-                    <img src={thumbnailPreview} alt="Thumbnail" className="w-full h-full object-cover" />
+                    <img src={thumbnailPreview} alt="Selected video thumbnail preview" className="w-full h-full object-cover" />
                     <button
                       onClick={() => { setThumbnail(null); if (thumbnailPreview) URL.revokeObjectURL(thumbnailPreview); setThumbnailPreview(null); }}
                       className="absolute -top-1 -right-1 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-xs"

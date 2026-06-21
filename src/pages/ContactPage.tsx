@@ -49,11 +49,23 @@ export default function ContactPage() {
             className="space-y-4 max-w-xl"
           >
             <div className="grid sm:grid-cols-2 gap-4">
-              <Input required placeholder="Your name" name="name" />
-              <Input required type="email" placeholder="Email" name="email" />
+              <div>
+                <label htmlFor="contact-name" className="text-sm text-gray-300 block mb-1">Your name</label>
+                <Input id="contact-name" required placeholder="Your name" name="name" />
+              </div>
+              <div>
+                <label htmlFor="contact-email" className="text-sm text-gray-300 block mb-1">Email</label>
+                <Input id="contact-email" required type="email" placeholder="Email" name="email" />
+              </div>
             </div>
-            <Input required placeholder="Subject" name="subject" />
-            <Textarea required placeholder="Your message" name="message" rows={6} />
+            <div>
+              <label htmlFor="contact-subject" className="text-sm text-gray-300 block mb-1">Subject</label>
+              <Input id="contact-subject" required placeholder="Subject" name="subject" />
+            </div>
+            <div>
+              <label htmlFor="contact-message" className="text-sm text-gray-300 block mb-1">Your message</label>
+              <Textarea id="contact-message" required placeholder="Your message" name="message" rows={6} />
+            </div>
             <Button type="submit" className="w-full sm:w-auto">Send message</Button>
           </form>
         )}
