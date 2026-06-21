@@ -32,8 +32,18 @@ export default function HomePage() {
     );
   }
 
-  const featured = visible[0];
-  const rest = visible.slice(1);
+  // Only "feature" a post when we have enough to fill the grid below it
+  const showFeatured = visible.length >= 4;
+  const featured = showFeatured ? visible[0] : null;
+  const rest = showFeatured ? visible.slice(1) : visible;
+
+  // For thin category pages, show extra posts from the rest of the site
+  const moreFromSite = category
+    ? posts
+        .filter((p) => p.category !== CATEGORY_LABELS[category!])
+        .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))
+        .slice(0, 6)
+    : [];
 
   const pageTitle = category
     ? `${CATEGORY_LABELS[category]} — Creator Cloud`
@@ -158,11 +168,66 @@ export default function HomePage() {
         })()}
 
         <h3 className="text-sm font-semibold uppercase tracking-widest text-gray-500 mb-4 mt-12">
-          Latest articles
+          {category ? `${CATEGORY_LABELS[category!]} articles` : "Latest articles"}
         </h3>
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {rest.map((p, i) => (
-            <div key={p.slug} className="contents">
+        {rest.length === 0 ? (
+          <p className="text-gray-500 text-sm mb-8">
+            That's everything in this category for now — more coming soon.
+          </p>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {rest.map((p, i) => (
+              <div key={p.slug} className="contents">
+                <article className="rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.04] transition-colors p-5 flex flex-col">
+                  <span className="text-[10px] font-semibold tracking-[0.18em] uppercase text-red-400/80 mb-2">
+                    {p.category}
+                  </span>
+                  <h4 className="font-semibold text-lg leading-snug mb-2">
+                    <Link to={`/blog/${p.slug}`} className="hover:text-white text-gray-100">
+                      {p.title}
+                    </Link>
+                  </h4>
+                  <p className="text-sm text-gray-400 line-clamp-3 mb-4 flex-1">{p.excerpt}</p>
+                  <div className="text-xs text-gray-500 flex items-center justify-between">
+                    <span>{p.author}</span>
+                    <span className="inline-flex items-center gap-1">
+                      <Clock className="w-3 h-3" /> {p.readingMinutes} min
+                    </span>
+                  </div>
+                </article>
+                {(i + 1) % 6 === 0 && (
+                  <div className="md:col-span-2 lg:col-span-3">
+                    <AdSlot slot="2222222222" />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {category && moreFromSite.length > 0 && (
+          <section className="mt-16">
+            <h3 className="text-sm font-semibold uppercase tracking-widest text-gray-500 mb-4">
+              More from Creator Cloud
+            </h3>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {moreFromSite.map((p) => (
+                <Link
+                  key={p.slug}
+                  to={`/blog/${p.slug}`}
+                  className="group rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.04] transition-colors p-4"
+                >
+                  <span className="text-[10px] font-semibold tracking-[0.18em] uppercase text-red-400/80 mb-2 block">
+                    {p.category}
+                  </span>
+                  <h4 className="font-semibold text-sm leading-snug text-gray-100 group-hover:text-white">
+                    {p.title}
+                  </h4>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
               <article className="rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.04] transition-colors p-5 flex flex-col">
                 <span className="text-[10px] font-semibold tracking-[0.18em] uppercase text-red-400/80 mb-2">
                   {p.category}
