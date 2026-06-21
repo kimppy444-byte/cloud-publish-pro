@@ -228,31 +228,6 @@ export default function HomePage() {
             </div>
           </section>
         )}
-              <article className="rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.04] transition-colors p-5 flex flex-col">
-                <span className="text-[10px] font-semibold tracking-[0.18em] uppercase text-red-400/80 mb-2">
-                  {p.category}
-                </span>
-                <h4 className="font-semibold text-lg leading-snug mb-2">
-                  <Link to={`/blog/${p.slug}`} className="hover:text-white text-gray-100">
-                    {p.title}
-                  </Link>
-                </h4>
-                <p className="text-sm text-gray-400 line-clamp-3 mb-4 flex-1">{p.excerpt}</p>
-                <div className="text-xs text-gray-500 flex items-center justify-between">
-                  <span>{p.author}</span>
-                  <span className="inline-flex items-center gap-1">
-                    <Clock className="w-3 h-3" /> {p.readingMinutes} min
-                  </span>
-                </div>
-              </article>
-              {(i + 1) % 6 === 0 && (
-                <div className="md:col-span-2 lg:col-span-3">
-                  <AdSlot slot="2222222222" />
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
 
         {visible.length === 0 && (
           <p className="text-center text-gray-500 py-16">
