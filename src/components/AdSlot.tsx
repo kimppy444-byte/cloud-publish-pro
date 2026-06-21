@@ -38,11 +38,14 @@ export default function AdSlot({
   }, []);
 
   return (
-    <div className={`my-8 flex justify-center ${className}`}>
+    <div
+      className={`ad-slot-wrapper my-8 flex justify-center ${className}`}
+      data-ad-wrapper
+    >
       <ins
         ref={ref}
         className="adsbygoogle"
-        style={{ display: "block", minHeight: 90, width: "100%", ...style }}
+        style={{ display: "block", width: "100%", ...style }}
         data-ad-client="ca-pub-8877213222492502"
         data-ad-slot={slot}
         data-ad-format={format}
