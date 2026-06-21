@@ -23,6 +23,7 @@ import UnlockYouTubePage from "./pages/UnlockYouTubePage";
 import UnlockFacebookPage from "./pages/UnlockFacebookPage";
 import ShortRedirectPage from "./pages/ShortRedirectPage";
 import YouTubeCallbackPage from "./pages/YouTubeCallbackPage";
+import ArticleUnlockPage from "./pages/ArticleUnlockPage";
 
 // Admin dashboard (gated)
 import Index from "./pages/Index";
