@@ -116,7 +116,12 @@ export async function generateYouTubeSmartLink(
 
     const payload = [mask, compactChannelId, req.targetUrl];
     const encoded = base64url(payload);
-    const longUrl = `${smartLinkBase()}/u/${req.videoId}?d=${encoded}`;
+    // Always host the gate inside a dynamic article on our own domain so
+    // the URL that spoo.me / da.gd shortens points at an editorial page
+    // (AdSense-safe) instead of a bare bridge page. Falls back to API_BASE
+    // only during SSR where window is undefined.
+    const articleBase = typeof window !== "undefined" ? window.location.origin : API_BASE;
+    const longUrl = `${articleBase}/article/${req.videoId}?d=${encoded}`;
 
     if (shorten) {
       const shortLink = await shortenUrl(longUrl);
