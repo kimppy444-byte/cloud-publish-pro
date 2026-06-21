@@ -117,6 +117,46 @@ export default function HomePage() {
 
         <AdSlot slot="1111111111" />
 
+        {!category && !q && (() => {
+          const editorPickSlugs = [
+            "google-adsense-approval-checklist-2026",
+            "brand-deal-negotiation-creator-rate-cards-2026",
+            "llc-vs-sole-proprietor-for-creators-2026",
+            "youtube-shorts-monetization-2026-realistic-rpm-breakdown",
+            "best-keyword-research-tools-for-youtube-2026",
+            "ai-thumbnail-generators-tested-2026",
+          ];
+          const picks = editorPickSlugs
+            .map((s) => posts.find((p) => p.slug === s))
+            .filter((p): p is NonNullable<typeof p> => Boolean(p));
+          return (
+            <section className="mt-12">
+              <h3 className="text-sm font-semibold uppercase tracking-widest text-gray-500 mb-4">
+                Editor's picks · highest-value reading
+              </h3>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {picks.map((p) => (
+                  <Link
+                    key={p.slug}
+                    to={`/blog/${p.slug}`}
+                    className="group rounded-xl border border-red-500/20 bg-gradient-to-br from-red-500/5 to-orange-500/5 p-5 hover:border-red-500/40 transition-colors"
+                  >
+                    <span className="text-[10px] font-semibold tracking-[0.18em] uppercase text-red-400 mb-2 block">
+                      {p.category}
+                    </span>
+                    <h4 className="font-semibold text-base leading-snug text-gray-100 group-hover:text-white mb-2">
+                      {p.title}
+                    </h4>
+                    <span className="text-xs text-red-400 inline-flex items-center gap-1 group-hover:gap-2 transition-all">
+                      Read <ArrowRight className="w-3 h-3" />
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          );
+        })()}
+
         <h3 className="text-sm font-semibold uppercase tracking-widest text-gray-500 mb-4 mt-12">
           Latest articles
         </h3>
