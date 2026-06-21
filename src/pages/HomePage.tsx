@@ -82,19 +82,47 @@ export default function HomePage() {
         })}</script>
       </Helmet>
 
-      <section className="border-b border-white/5">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 md:py-16">
-          <p className="text-xs font-semibold tracking-[0.2em] text-red-400 uppercase mb-3">
-            {category ? CATEGORY_LABELS[category] : "Editorial"}
-          </p>
-          <h1 className="text-3xl md:text-5xl font-bold leading-tight max-w-3xl">
-            {category ? CATEGORY_LABELS[category] : "Honest writing about the business of being a creator."}
-          </h1>
-          <p className="mt-4 text-gray-400 max-w-2xl">
-            {category
-              ? `Recent ${CATEGORY_LABELS[category]} coverage from the Creator Cloud editorial team.`
-              : "We test the tools, run the math, and publish what actually works — no sponsored fluff, no recycled press releases."}
-          </p>
+      <section className="border-b border-white/5 bg-gradient-to-br from-red-500/[0.06] via-transparent to-orange-500/[0.04]">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 md:py-20 grid md:grid-cols-5 gap-8 items-center">
+          <div className="md:col-span-3">
+            <p className="text-xs font-semibold tracking-[0.2em] text-red-400 uppercase mb-3">
+              {category ? CATEGORY_LABELS[category] : "Editorial"}
+            </p>
+            <h1 className="text-3xl md:text-5xl font-bold leading-tight">
+              {category ? CATEGORY_LABELS[category] : "Honest writing about the business of being a creator."}
+            </h1>
+            <p className="mt-4 text-gray-400 max-w-2xl">
+              {category
+                ? `Recent ${CATEGORY_LABELS[category]} coverage from the Creator Cloud editorial team.`
+                : "We test the tools, run the math, and publish what actually works — no sponsored fluff, no recycled press releases."}
+            </p>
+          </div>
+          <div className="md:col-span-2 hidden md:block">
+            <div className="rounded-2xl border border-white/10 bg-black/30 backdrop-blur p-5">
+              <p className="text-[10px] font-semibold tracking-[0.2em] text-red-400 uppercase mb-3">
+                This week on Creator Cloud
+              </p>
+              <ul className="space-y-3 text-sm">
+                {posts
+                  .slice()
+                  .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))
+                  .slice(0, 4)
+                  .map((p) => (
+                    <li key={p.slug}>
+                      <Link
+                        to={`/blog/${p.slug}`}
+                        className="text-gray-300 hover:text-white leading-snug block"
+                      >
+                        <span className="text-[10px] tracking-widest text-red-400/70 uppercase mr-2">
+                          {p.category}
+                        </span>
+                        {p.title}
+                      </Link>
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          </div>
         </div>
       </section>
 
