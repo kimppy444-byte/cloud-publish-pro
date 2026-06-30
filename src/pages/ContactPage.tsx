@@ -18,25 +18,24 @@ export default function ContactPage() {
       <article className="max-w-3xl mx-auto px-6 py-16">
         <h1 className="text-4xl font-bold mb-4 text-white">Contact</h1>
         <p className="text-gray-400 mb-10">
-          For story tips, corrections, partnership inquiries, or DMCA notices, use the form below or email us
-          directly.
+          For story tips, corrections, partnership inquiries, or DMCA notices, use the form below.
         </p>
 
         <div className="grid sm:grid-cols-2 gap-4 mb-10">
-          <a href="mailto:editors@creatorcloud.example" className="flex items-center gap-3 p-4 rounded-lg border border-white/5 bg-white/[0.02] hover:bg-white/[0.05]">
+          <div className="flex items-center gap-3 p-4 rounded-lg border border-white/5 bg-white/[0.02]">
             <Mail className="w-5 h-5 text-red-400" />
             <div>
               <p className="text-sm font-semibold">Editorial</p>
-              <p className="text-xs text-gray-400">editors@creatorcloud.example</p>
+              <p className="text-xs text-gray-400">Story tips, corrections, and source notes</p>
             </div>
-          </a>
-          <a href="mailto:legal@creatorcloud.example" className="flex items-center gap-3 p-4 rounded-lg border border-white/5 bg-white/[0.02] hover:bg-white/[0.05]">
+          </div>
+          <div className="flex items-center gap-3 p-4 rounded-lg border border-white/5 bg-white/[0.02]">
             <MessageSquare className="w-5 h-5 text-orange-400" />
             <div>
               <p className="text-sm font-semibold">Legal & DMCA</p>
-              <p className="text-xs text-gray-400">legal@creatorcloud.example</p>
+              <p className="text-xs text-gray-400">Copyright and policy reports</p>
             </div>
-          </a>
+          </div>
         </div>
 
         {sent ? (

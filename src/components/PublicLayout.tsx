@@ -8,6 +8,7 @@ const NAV = [
   { to: "/category/tiktok", label: "TikTok" },
   { to: "/category/monetization", label: "Monetization" },
   { to: "/category/tools", label: "Tools" },
+  { to: "/category/growth", label: "Growth" },
   { to: "/about", label: "About" },
 ];
 
@@ -75,12 +76,16 @@ export default function PublicLayout() {
               <li><Link to="/category/tiktok" className="hover:text-white">TikTok</Link></li>
               <li><Link to="/category/monetization" className="hover:text-white">Monetization</Link></li>
               <li><Link to="/category/tools" className="hover:text-white">Tools</Link></li>
+              <li><Link to="/category/growth" className="hover:text-white">Growth</Link></li>
+              <li><Link to="/category/analytics" className="hover:text-white">Analytics</Link></li>
+              <li><Link to="/category/newsletter" className="hover:text-white">Newsletter</Link></li>
             </ul>
           </div>
           <div>
             <h4 className="font-semibold mb-3 text-gray-300">Company</h4>
             <ul className="space-y-2 text-gray-500">
               <li><Link to="/about" className="hover:text-white">About</Link></li>
+              <li><Link to="/editorial-policy" className="hover:text-white">Editorial Policy</Link></li>
               <li><Link to="/contact" className="hover:text-white">Contact</Link></li>
               <li><a href="/sitemap.xml" className="hover:text-white">Sitemap</a></li>
             </ul>
