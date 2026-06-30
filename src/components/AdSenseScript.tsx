@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
+import { posts } from "@/content/posts";
 
 /**
  * Route-aware AdSense loader.
@@ -10,14 +11,12 @@ import { useLocation } from "react-router-dom";
  *
  * Only full editorial article routes (/blog/*) load the script.
  */
-const ALLOWED_PREFIXES = ["/blog/"];
-
 const ADSENSE_SRC =
   "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8877213222492502";
 
 export default function AdSenseScript() {
   const { pathname } = useLocation();
-  const allowed = ALLOWED_PREFIXES.some((p) => pathname.startsWith(p));
+  const allowed = posts.some((post) => pathname === `/blog/${post.slug}`);
 
   useEffect(() => {
     if (!allowed) return;

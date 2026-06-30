@@ -15,8 +15,8 @@ interface AdSlotProps {
 
 /**
  * Google AdSense ad slot.
- * The publisher script is loaded once in index.html. Each slot pushes itself
- * onto the adsbygoogle queue on mount.
+ * The publisher script is injected only on valid article routes by
+ * AdSenseScript. Each slot pushes itself onto the adsbygoogle queue on mount.
  */
 export default function AdSlot({
   slot = "0000000000",
