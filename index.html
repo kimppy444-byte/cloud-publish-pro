@@ -9,9 +9,11 @@
     <meta name="description" content="In-depth guides, software reviews, and revenue tactics for video creators, social-media managers, and indie tech founders." />
     <meta name="author" content="Creator Cloud" />
 
-    <!-- Google AdSense -->
+    <!-- Google AdSense (account meta only; the ad script is injected per-route
+         by src/components/AdSenseScript.tsx so it never loads on bridge/unlock
+         pages, which would otherwise look like thin/doorway pages to the crawler) -->
     <meta name="google-adsense-account" content="ca-pub-8877213222492502" />
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8877213222492502" crossorigin="anonymous"></script>
+
 
     <!-- Monetag (existing) -->
     <meta name="monetag" content="a0080ec1cf17666375a9db8ec507b105" />
