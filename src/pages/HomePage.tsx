@@ -1,7 +1,6 @@
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { posts } from "@/content/posts";
-import AdSlot from "@/components/AdSlot";
 import { ArrowRight, Clock } from "lucide-react";
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -80,6 +79,7 @@ export default function HomePage() {
             })),
           },
         })}</script>
+        {q && <meta name="robots" content="noindex,follow" />}
       </Helmet>
 
       <section className="border-b border-white/5 bg-gradient-to-br from-red-500/[0.06] via-transparent to-orange-500/[0.04]">
@@ -153,8 +153,6 @@ export default function HomePage() {
           </Link>
         )}
 
-        <AdSlot slot="1111111111" />
-
         {!category && !q && (() => {
           const editorPickSlugs = [
             "google-adsense-approval-checklist-2026",
@@ -223,11 +221,6 @@ export default function HomePage() {
                     </span>
                   </div>
                 </article>
-                {(i + 1) % 6 === 0 && (
-                  <div className="md:col-span-2 lg:col-span-3">
-                    <AdSlot slot="2222222222" />
-                  </div>
-                )}
               </div>
             ))}
           </div>

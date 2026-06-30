@@ -22,10 +22,14 @@ const staticEntries: SitemapEntry[] = [
   { path: "/terms", changefreq: "yearly", priority: "0.3" },
   { path: "/dmca", changefreq: "yearly", priority: "0.3" },
   { path: "/disclosure", changefreq: "yearly", priority: "0.3" },
+  { path: "/editorial-policy", changefreq: "monthly", priority: "0.5" },
   { path: "/category/youtube", changefreq: "weekly", priority: "0.8" },
   { path: "/category/tiktok", changefreq: "weekly", priority: "0.8" },
   { path: "/category/monetization", changefreq: "weekly", priority: "0.8" },
   { path: "/category/tools", changefreq: "weekly", priority: "0.8" },
+  { path: "/category/analytics", changefreq: "weekly", priority: "0.7" },
+  { path: "/category/growth", changefreq: "weekly", priority: "0.7" },
+  { path: "/category/newsletter", changefreq: "weekly", priority: "0.7" },
 ];
 
 const postEntries: SitemapEntry[] = posts.map((p) => ({

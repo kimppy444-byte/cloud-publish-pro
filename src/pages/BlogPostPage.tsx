@@ -3,6 +3,7 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { ArrowLeft, Clock, Calendar, Lock, ExternalLink } from "lucide-react";
 import { posts } from "@/content/posts";
+import { getAuthorProfile } from "@/content/authors";
 import AdSlot from "@/components/AdSlot";
 import { decodeBlogUnlock } from "@/lib/blog-smart-link";
 
@@ -32,11 +33,29 @@ function useCameFromSmartLink() {
 }
 
 
+function renderInline(text: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, j) =>
+    part.startsWith("**") && part.endsWith("**") ? (
+      <strong key={j} className="text-white font-semibold">{part.slice(2, -2)}</strong>
+    ) : (
+      <span key={j}>{part}</span>
+    )
+  );
+}
+
 function renderBody(md: string) {
   // Lightweight markdown renderer for our editorial content.
   const blocks = md.split(/\n\n+/);
   return blocks.map((block, i) => {
     const trimmed = block.trim();
+    if (trimmed.startsWith("#### ")) {
+      return (
+        <h4 key={i} className="text-lg md:text-xl font-bold mt-8 mb-3 text-white">
+          {trimmed.slice(5)}
+        </h4>
+      );
+    }
     if (trimmed.startsWith("### ")) {
       return (
         <h3 key={i} className="text-xl md:text-2xl font-bold mt-10 mb-3 text-white">
@@ -51,17 +70,28 @@ function renderBody(md: string) {
         </h2>
       );
     }
-    // Inline bold **text**
-    const parts = trimmed.split(/(\*\*[^*]+\*\*)/g);
+    const lines = trimmed.split("\n").map((line) => line.trim()).filter(Boolean);
+    if (lines.length > 1 && lines.every((line) => /^\*\s+/.test(line))) {
+      return (
+        <ul key={i} className="list-disc pl-6 space-y-2 text-gray-300 leading-relaxed mb-6 text-[17px]">
+          {lines.map((line, j) => (
+            <li key={j}>{renderInline(line.replace(/^\*\s+/, ""))}</li>
+          ))}
+        </ul>
+      );
+    }
+    if (lines.length > 1 && lines.every((line) => /^\d+\.\s+/.test(line))) {
+      return (
+        <ol key={i} className="list-decimal pl-6 space-y-2 text-gray-300 leading-relaxed mb-6 text-[17px]">
+          {lines.map((line, j) => (
+            <li key={j}>{renderInline(line.replace(/^\d+\.\s+/, ""))}</li>
+          ))}
+        </ol>
+      );
+    }
     return (
       <p key={i} className="text-gray-300 leading-relaxed mb-5 text-[17px]">
-        {parts.map((part, j) =>
-          part.startsWith("**") && part.endsWith("**") ? (
-            <strong key={j} className="text-white font-semibold">{part.slice(2, -2)}</strong>
-          ) : (
-            <span key={j}>{part}</span>
-          )
-        )}
+        {renderInline(trimmed)}
       </p>
     );
   });
@@ -99,6 +129,8 @@ export default function BlogPostPage() {
 
   const url = `https://cloud-publish-pro.lovable.app/blog/${post.slug}`;
   const wordCount = post.body.split(/\s+/).filter(Boolean).length;
+  const authorProfile = getAuthorProfile(post.author);
+  const reviewedAt = "2026-06-30";
 
   // Tag → entity URL map for AEO/GEO entity grounding. Helps LLMs and
   // search engines disambiguate what the article is "about".
@@ -135,10 +167,17 @@ export default function BlogPostPage() {
     author: {
       "@type": "Person",
       name: post.author,
-      url: `https://cloud-publish-pro.lovable.app/about#${post.author.toLowerCase().replace(/\s+/g, "-")}`,
+      jobTitle: authorProfile.role,
+      description: authorProfile.bio,
+      url: `https://cloud-publish-pro.lovable.app/about#${authorProfile.id}`,
+    },
+    reviewedBy: {
+      "@type": "Organization",
+      name: "Creator Cloud editorial desk",
+      url: "https://cloud-publish-pro.lovable.app/editorial-policy",
     },
     datePublished: post.publishedAt,
-    dateModified: post.publishedAt,
+    dateModified: reviewedAt,
     publisher: {
       "@type": "Organization",
       "@id": "https://cloud-publish-pro.lovable.app/#organization",
@@ -193,6 +232,7 @@ export default function BlogPostPage() {
         <meta property="og:description" content={post.excerpt} />
         <meta property="og:url" content={url} />
         <meta property="article:published_time" content={post.publishedAt} />
+        <meta property="article:modified_time" content={reviewedAt} />
         <meta property="article:author" content={post.author} />
         <meta property="article:section" content={post.category} />
         <script type="application/ld+json">{JSON.stringify(articleSchema)}</script>
@@ -208,20 +248,27 @@ export default function BlogPostPage() {
         <h1 className="text-3xl md:text-5xl font-bold leading-tight mb-5">{post.title}</h1>
         <p className="text-lg text-gray-400 mb-6 leading-relaxed">{post.excerpt}</p>
 
-        <div className="flex items-center gap-4 text-sm text-gray-500 pb-6 border-b border-white/5 mb-10">
-          <span>By <strong className="text-gray-300 font-medium">{post.author}</strong></span>
+        <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 pb-6 border-b border-white/5 mb-10">
+          <span>By <a href={`#${authorProfile.id}`} className="text-gray-300 font-medium hover:text-white">{post.author}</a></span>
           <span className="inline-flex items-center gap-1">
             <Calendar className="w-3.5 h-3.5" />
             {new Date(post.publishedAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
           </span>
+          <span>Reviewed {new Date(reviewedAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}</span>
           <span className="inline-flex items-center gap-1">
             <Clock className="w-3.5 h-3.5" /> {post.readingMinutes} min read
           </span>
         </div>
 
-        <AdSlot slot="4444444444" />
-
         <div className="prose-content">{withAd}</div>
+
+        <section id={authorProfile.id} className="mt-12 border-y border-white/5 py-6">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-red-400 mb-2">About the author</p>
+          <h2 className="text-xl font-bold text-white mb-2">{authorProfile.name}</h2>
+          <p className="text-sm text-gray-400 mb-3">{authorProfile.role}</p>
+          <p className="text-gray-300 leading-relaxed mb-3">{authorProfile.bio}</p>
+          <p className="text-sm text-gray-500 leading-relaxed">{authorProfile.standardsNote}</p>
+        </section>
 
         <div className="mt-12 pt-8 border-t border-white/5 flex flex-wrap gap-2">
           {post.tags.map((tag) => (
@@ -239,7 +286,6 @@ export default function BlogPostPage() {
             <p className="text-sm text-gray-400 mb-4">
               Watch the short video below, then tap unlock to continue. Thanks for reading the full article — it helps the site.
             </p>
-            <AdSlot slot="6666666666" />
             {unlock.ytVideoId && (
               <div className="mt-4 aspect-video rounded-xl overflow-hidden border border-white/10 bg-black">
                 <iframe

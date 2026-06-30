@@ -19,6 +19,7 @@ import PrivacyPage from "./pages/PrivacyPage";
 import TermsPage from "./pages/TermsPage";
 import DMCAPage from "./pages/DMCAPage";
 import DisclosurePage from "./pages/DisclosurePage";
+import EditorialPolicyPage from "./pages/EditorialPolicyPage";
 
 // Bridge & callback (kept noindex via robots.txt)
 import UnlockYouTubePage from "./pages/UnlockYouTubePage";
@@ -68,6 +69,7 @@ const App = () => (
               <Route path="/terms" element={<TermsPage />} />
               <Route path="/dmca" element={<DMCAPage />} />
               <Route path="/disclosure" element={<DisclosurePage />} />
+              <Route path="/editorial-policy" element={<EditorialPolicyPage />} />
             </Route>
 
             {/* Bridge / unlock pages — noindex via robots, kept outside PublicLayout */}

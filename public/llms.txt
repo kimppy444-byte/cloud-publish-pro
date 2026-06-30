@@ -8,6 +8,7 @@ Creator Cloud publishes in-depth guides, software reviews, and revenue tactics f
 
 - [Home](/): Featured posts, latest articles, and editorial picks.
 - [About](/about): Who we are and our editorial standards.
+- [Editorial Policy](/editorial-policy): Research, review, correction, and advertising standards.
 - [Contact](/contact): Story tips, corrections, partnerships, and DMCA notices.
 
 ## Policies

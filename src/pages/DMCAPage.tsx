@@ -35,7 +35,7 @@ export default function DMCAPage() {
         </p>
 
         <h2 className="text-2xl font-bold mt-10 mb-3 text-white">Filing a takedown notice</h2>
-        <p>To file a DMCA takedown notice, send a written notice to legal@creatorcloud.example including:</p>
+        <p>To file a DMCA takedown notice, send a written notice through our contact page including:</p>
         <ol className="list-decimal pl-6 space-y-1 my-4">
           <li>Your physical or electronic signature.</li>
           <li>Identification of the copyrighted work claimed to be infringed.</li>
