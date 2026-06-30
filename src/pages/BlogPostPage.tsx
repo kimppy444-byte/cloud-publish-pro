@@ -71,10 +71,17 @@ export default function BlogPostPage() {
   const { slug } = useParams();
   const [searchParams] = useSearchParams();
   const post = posts.find((p) => p.slug === slug);
+  const cameFromSmartLink = useCameFromSmartLink();
   const unlock = (() => {
     const token = searchParams.get("u");
-    return token ? decodeBlogUnlock(token) : null;
+    if (!token) return null;
+    // Only honor the unlock token when the visitor actually came from one of
+    // our smart-link surfaces. Direct hits, search engines, and AdSense's
+    // crawler see the article as a normal editorial page (no outbound CTA).
+    if (!cameFromSmartLink) return null;
+    return decodeBlogUnlock(token);
   })();
+
 
   if (!post) {
     return (
