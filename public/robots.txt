@@ -1,3 +1,22 @@
+# AdSense crawler — must not see bridge/unlock pages or it flags them
+# as thin/doorway pages (the * rules below don't apply to Mediapartners-Google).
+User-agent: Mediapartners-Google
+Disallow: /u/
+Disallow: /s/
+Disallow: /article/
+Disallow: /admin
+Disallow: /admin/
+Disallow: /youtube-callback
+
+# AdsBot (landing-page quality crawler) — same treatment
+User-agent: AdsBot-Google
+Disallow: /u/
+Disallow: /s/
+Disallow: /article/
+Disallow: /admin
+Disallow: /admin/
+Disallow: /youtube-callback
+
 User-agent: *
 Allow: /
 Disallow: /admin

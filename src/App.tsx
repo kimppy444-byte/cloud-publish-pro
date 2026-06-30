@@ -7,6 +7,8 @@ import AppLayout from "./components/AppLayout";
 import PublicLayout from "./components/PublicLayout";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import PasswordGate from "./components/PasswordGate";
+import AdSenseScript from "./components/AdSenseScript";
+
 
 // Public site
 import HomePage from "./pages/HomePage";
@@ -53,6 +55,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <AdSenseScript />
           <Routes>
             {/* Public blog */}
             <Route element={<PublicLayout />}>

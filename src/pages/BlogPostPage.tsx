@@ -1,9 +1,36 @@
+import { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { ArrowLeft, Clock, Calendar, Lock, ExternalLink } from "lucide-react";
 import { posts } from "@/content/posts";
 import AdSlot from "@/components/AdSlot";
 import { decodeBlogUnlock } from "@/lib/blog-smart-link";
+
+/**
+ * Returns true only when the visitor arrived from one of our own smart-link
+ * surfaces (the v0-sssw redirect domain, or our /s/ /u/ bridge routes).
+ *
+ * We use this to hide the outbound "Unlock bonus resource" CTA from
+ * Googlebot, AdSense's crawler, and direct visitors — they would otherwise
+ * see the article as a doorway/thin-affiliate page (the exact pattern
+ * Google calls out in publisher policy 10015918 and the thin-content
+ * section of the manual-actions report 9044175).
+ */
+function useCameFromSmartLink() {
+  const [allowed, setAllowed] = useState(false);
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const ref = document.referrer || "";
+    const ok =
+      ref.includes("v0-sssw.vercel.app") ||
+      ref.includes("/s/") ||
+      ref.includes("/u/") ||
+      ref.includes("/article/");
+    setAllowed(ok);
+  }, []);
+  return allowed;
+}
+
 
 function renderBody(md: string) {
   // Lightweight markdown renderer for our editorial content.
@@ -44,10 +71,17 @@ export default function BlogPostPage() {
   const { slug } = useParams();
   const [searchParams] = useSearchParams();
   const post = posts.find((p) => p.slug === slug);
+  const cameFromSmartLink = useCameFromSmartLink();
   const unlock = (() => {
     const token = searchParams.get("u");
-    return token ? decodeBlogUnlock(token) : null;
+    if (!token) return null;
+    // Only honor the unlock token when the visitor actually came from one of
+    // our smart-link surfaces. Direct hits, search engines, and AdSense's
+    // crawler see the article as a normal editorial page (no outbound CTA).
+    if (!cameFromSmartLink) return null;
+    return decodeBlogUnlock(token);
   })();
+
 
   if (!post) {
     return (
