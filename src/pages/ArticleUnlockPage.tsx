@@ -16,10 +16,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { Calendar, Clock, CheckCircle2, Lock, ThumbsUp, MessageSquare, Youtube, ArrowRight, Loader2, Download } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { posts } from "@/content/posts";
-import AdSlot from "@/components/AdSlot";
 
 declare global { interface Window { YT?: any; onYouTubeIframeAPIReady?: () => void; } }
 
@@ -95,10 +92,9 @@ export default function ArticleUnlockPage() {
   const [completed, setCompleted] = useState<Record<string, boolean>>({});
   const [verifying, setVerifying] = useState<Record<string, boolean>>({});
   const [actionsDone, setActionsDone] = useState(false);
-  const [bonusClicks, setBonusClicks] = useState(0);
   const [watchedSeconds, setWatchedSeconds] = useState(0);
   const watchSatisfied = watchedSeconds >= 6;
-  const unlocked = actionsDone && bonusClicks >= 2 && watchSatisfied;
+  const unlocked = actionsDone && watchSatisfied;
 
   useEffect(() => {
     if (watchSatisfied) return;
@@ -123,22 +119,20 @@ export default function ArticleUnlockPage() {
     }, 5000);
   };
 
-  const handleBonusClick = () => {
-    window.open("https://omg10.com/4/11035810", "_blank");
-    setBonusClicks(c => Math.min(2, c + 1));
-  };
-
   const handleUnlock = () => {
     if (unlocked && targetUrl) window.location.href = targetUrl;
   };
 
   const body = renderBody(post.body);
-  const adIndex = Math.floor(body.length * 0.4);
-  const withAd = [
-    ...body.slice(0, adIndex),
-    <AdSlot key="mid-ad" slot="3333333333" />,
-    ...body.slice(adIndex),
-  ];
+  const requiredActions = [
+    actions.subscribe ? "subscribe" : null,
+    actions.like ? "like" : null,
+    actions.comment ? "comment" : null,
+  ].filter((action): action is string => Boolean(action));
+  const completedSocial = requiredActions.filter((action) => completed[action]).length;
+  const totalSteps = requiredActions.length + 1;
+  const completedSteps = completedSocial + (watchSatisfied ? 1 : 0);
+  const progressPercent = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
 
   return (
     <>
@@ -165,9 +159,7 @@ export default function ArticleUnlockPage() {
           </span>
         </div>
 
-        <AdSlot slot="4444444444" />
-
-        <div className="prose-content">{withAd}</div>
+        <div className="prose-content">{body}</div>
 
         <div className="mt-12 pt-8 border-t border-white/5 flex flex-wrap gap-2">
           {post.tags.map((tag) => (
@@ -177,105 +169,100 @@ export default function ArticleUnlockPage() {
 
         {/* Unlock gate */}
         <section className="mt-12">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-red-400 mb-3">
-            Bonus for readers who made it this far
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary mb-3">
+            Creator unlock
           </p>
           <p className="text-sm text-gray-400 mb-4">
-            Watch the short clip below and complete the quick actions to unlock the link.
+            Complete the actions to unlock the resource.
           </p>
 
-          <Card className="bg-[#1a1a1a] border-white/5 shadow-2xl overflow-hidden">
-            <div className="aspect-video w-full bg-black relative">
-              <YouTubeAutoplayer videoId={videoId} />
-              {!watchSatisfied && (
-                <div className="absolute bottom-2 right-2 px-3 py-1 rounded-full bg-black/70 backdrop-blur-md border border-white/10 text-xs font-semibold text-white pointer-events-none">
-                  Watching... {6 - watchedSeconds}s
-                </div>
-              )}
-              {watchSatisfied && (
-                <div className="absolute bottom-2 right-2 px-3 py-1 rounded-full bg-green-600/90 backdrop-blur-md text-xs font-semibold text-white flex items-center gap-1 pointer-events-none">
-                  <CheckCircle2 className="w-3 h-3" /> Watch verified
-                </div>
-              )}
+          <div className="mx-auto max-w-[375px] overflow-hidden rounded-2xl border border-border bg-card p-4 shadow-card">
+            <div className="mb-4 text-center">
+              <h2 className="text-[22px] font-semibold leading-tight text-foreground">{post.title.split(":")[0]}</h2>
+              <p className="text-sm leading-snug text-muted-foreground">Complete the actions to unlock</p>
             </div>
-            <div className="p-6 space-y-4">
+
+            <div className="relative mb-4 aspect-video overflow-hidden rounded-xl bg-background">
+              {videoId ? <YouTubeAutoplayer videoId={videoId} /> : null}
+              <div className="absolute bottom-2 right-2 rounded-full border border-border bg-background/80 px-3 py-1 text-xs font-semibold text-foreground backdrop-blur-md pointer-events-none">
+                {watchSatisfied ? (
+                  <span className="inline-flex items-center gap-1"><CheckCircle2 className="h-3 w-3 text-primary" /> Watch done</span>
+                ) : (
+                  <span>Watching... {6 - watchedSeconds}s</span>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-3">
               {actions.subscribe && (
-                <ActionBtn label="Subscribe to Channel" icon={<Youtube className="w-5 h-5 text-white" />} colorBg="bg-red-600"
+                <ActionBtn label="Subscribe & turn on notifications" icon={<Youtube className="w-4 h-4" />} tone="youtube"
                   done={completed.subscribe} loading={verifying.subscribe}
                   onClick={() => verify("subscribe", `https://www.youtube.com/channel/${channelId}?sub_confirmation=1`)} />
               )}
               {actions.like && (
-                <ActionBtn label="Like Video" icon={<ThumbsUp className="w-5 h-5 text-white" />} colorBg="bg-blue-600"
+                <ActionBtn label="Like video" icon={<ThumbsUp className="w-4 h-4" />} tone="neutral"
                   done={completed.like} loading={verifying.like}
                   onClick={() => verify("like", `https://www.youtube.com/watch?v=${videoId}`)} />
               )}
               {actions.comment && (
-                <ActionBtn label="Comment on Video" icon={<MessageSquare className="w-5 h-5 text-white" />} colorBg="bg-green-600"
+                <ActionBtn label="Comment on video" icon={<MessageSquare className="w-4 h-4" />} tone="neutral"
                   done={completed.comment} loading={verifying.comment}
                   onClick={() => verify("comment", `https://www.youtube.com/watch?v=${videoId}`)} />
               )}
             </div>
-            <div className="p-6 bg-white/5 border-t border-white/5 space-y-3">
-              {actionsDone && bonusClicks < 2 && (
-                <Button
-                  onClick={handleBonusClick}
-                  className="w-full h-12 text-base font-bold bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white shadow-lg shadow-orange-500/25 animate-pulse"
-                >
-                  <span className="flex items-center gap-2">
-                    <ArrowRight className="w-5 h-5" />
-                    Click this button {2 - bonusClicks} more time{2 - bonusClicks === 1 ? "" : "s"}
-                  </span>
-                </Button>
-              )}
-              <Button
-                className={`w-full h-12 text-lg font-bold transition-all duration-300 ${
-                  unlocked
-                    ? "bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 shadow-lg shadow-purple-500/25"
-                    : "bg-gray-700 text-gray-400 cursor-not-allowed"
+
+            <div className="mt-5">
+              <div aria-live="polite" className="sr-only">Progress update: {completedSteps}/{totalSteps} done</div>
+              <div className="mb-2 flex items-center justify-between">
+                <small className="text-xs text-muted-foreground">Unlock progress</small>
+                <span id="unlock-progress-badge" className="text-xs font-semibold text-primary">{completedSteps}/{totalSteps} done</span>
+              </div>
+              <div className="mb-4 h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label="Unlock progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progressPercent}>
+                <div className="h-full rounded-full bg-primary transition-all duration-300" style={{ width: `${progressPercent}%` }} />
+              </div>
+              <button
+                type="button"
+                className={`flex h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-opacity ${
+                  unlocked ? "bg-primary text-primary-foreground hover:opacity-90" : "bg-muted text-muted-foreground cursor-not-allowed"
                 }`}
                 onClick={handleUnlock}
                 disabled={!unlocked}
+                aria-label={`Unlock link. ${completedSteps} of ${totalSteps} required steps completed`}
+                aria-describedby="unlock-progress-badge"
               >
                 {unlocked ? (
-                  <span className="flex items-center gap-2"><Download className="w-5 h-5" />Unlock Link</span>
+                  <><Download className="w-4 h-4" />Unlock link</>
                 ) : (
-                  <span className="flex items-center gap-2"><Lock className="w-4 h-4" />Complete Steps to Unlock</span>
+                  <><Lock className="w-4 h-4" />Unlock link</>
                 )}
-              </Button>
+              </button>
             </div>
-          </Card>
+          </div>
         </section>
-
-        <AdSlot slot="5555555555" />
       </article>
     </>
   );
 }
 
-function ActionBtn({ label, icon, colorBg, done, loading, onClick }: {
-  label: string; icon: React.ReactNode; colorBg: string;
+function ActionBtn({ label, icon, tone, done, loading, onClick }: {
+  label: string; icon: React.ReactNode; tone: "youtube" | "neutral";
   done?: boolean; loading?: boolean; onClick: () => void;
 }) {
   return (
-    <Button
-      variant="outline"
-      className={`w-full h-14 justify-between group border-white/10 hover:bg-white/5 ${
-        done ? "bg-green-500/10 border-green-500/50 hover:bg-green-500/20" : ""
-      }`}
+    <button
+      type="button"
+      className={`unlock-action-row ${done ? "unlock-action-success" : tone === "youtube" ? "unlock-action-youtube" : "unlock-action-neutral"}`}
       onClick={onClick}
       disabled={done || loading}
     >
-      <div className="flex items-center gap-3">
-        <div className={`p-2 rounded-lg ${done ? "bg-green-500" : colorBg}`}>{icon}</div>
-        <div className="text-left">
-          <div className="font-semibold">{label}</div>
-          <div className="text-xs text-muted-foreground">Required</div>
-        </div>
-      </div>
-      {loading ? <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
-        : done ? <CheckCircle2 className="w-5 h-5 text-green-500" />
-        : <ArrowRight className="w-5 h-5 text-gray-500 group-hover:text-white transition-colors" />}
-    </Button>
+      <span className="flex min-w-0 flex-1 items-center justify-center gap-2">
+        {done ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : icon}
+        <span className="truncate">{label}</span>
+      </span>
+      {loading ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+        : done ? <CheckCircle2 className="h-4 w-4 shrink-0" />
+        : <ArrowRight className="h-4 w-4 shrink-0" />}
+    </button>
   );
 }
 
