@@ -27,3 +27,8 @@ Disallow: /article/
 Disallow: /youtube-callback
 
 Sitemap: https://cloud-publish-pro.lovable.app/sitemap.xml
+
+# User dashboard & auth — not for indexing
+Disallow: /signin
+Disallow: /signup
+Disallow: /dashboard
