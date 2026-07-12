@@ -207,8 +207,10 @@ export type Database = {
         Row: {
           clicks: number
           created_at: string
+          description: string | null
           destination_url: string
           id: string
+          metadata: Json
           slug: string
           title: string | null
           updated_at: string
@@ -217,8 +219,10 @@ export type Database = {
         Insert: {
           clicks?: number
           created_at?: string
+          description?: string | null
           destination_url: string
           id?: string
+          metadata?: Json
           slug: string
           title?: string | null
           updated_at?: string
@@ -227,8 +231,10 @@ export type Database = {
         Update: {
           clicks?: number
           created_at?: string
+          description?: string | null
           destination_url?: string
           id?: string
+          metadata?: Json
           slug?: string
           title?: string | null
           updated_at?: string

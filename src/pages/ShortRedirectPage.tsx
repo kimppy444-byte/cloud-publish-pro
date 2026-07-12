@@ -25,17 +25,37 @@ export default function ShortRedirectPage() {
       if (!code) { setError("Missing code"); return; }
       // 1) Try user-created smart links first
       const { data: userLink } = await supabase
-        .from("user_smart_links")
-        .select("id, destination_url, clicks")
+        .from("user_smart_links" as any)
+        .select("id, slug, destination_url, clicks, metadata")
         .eq("slug", code)
         .maybeSingle();
       if (cancelled) return;
       if (userLink) {
-        supabase.from("user_smart_links")
-          .update({ clicks: (userLink.clicks || 0) + 1 })
-          .eq("id", userLink.id)
+        const link = userLink as any;
+        supabase.from("user_smart_links" as any)
+          .update({ clicks: (link.clicks || 0) + 1 })
+          .eq("id", link.id)
           .then(() => {});
-        window.location.replace(userLink.destination_url);
+
+        const meta = link.metadata || {};
+        if (meta.videoId && meta.channelId) {
+          // Route through the unlock gate (deterministic host article)
+          let h = 0;
+          for (let i = 0; i < link.slug.length; i++) h = (h * 31 + link.slug.charCodeAt(i)) >>> 0;
+          const hostId = `a${(h % 9999).toString(36)}`;
+          const mask =
+            (meta.requireSubscribe ? 1 : 0) +
+            (meta.requireLike ? 2 : 0) +
+            (meta.requireComment ? 4 : 0);
+          const compact = String(meta.channelId).startsWith("UC")
+            ? String(meta.channelId).slice(2)
+            : String(meta.channelId);
+          const payload = btoa(JSON.stringify([mask, compact, link.destination_url]))
+            .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+          window.location.replace(`/article/${hostId}?d=${payload}&v=${meta.videoId}`);
+          return;
+        }
+        window.location.replace(link.destination_url);
         return;
       }
 
