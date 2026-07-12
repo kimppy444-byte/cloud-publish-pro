@@ -24,6 +24,8 @@ const staticEntries: SitemapEntry[] = [
   { path: "/disclosure", changefreq: "yearly", priority: "0.3" },
   { path: "/editorial-policy", changefreq: "monthly", priority: "0.5" },
   { path: "/smart-links", changefreq: "monthly", priority: "0.8" },
+  { path: "/how-it-works", changefreq: "monthly", priority: "0.8" },
+  { path: "/pricing", changefreq: "monthly", priority: "0.7" },
   { path: "/social-media-glossary", changefreq: "monthly", priority: "0.8" },
   { path: "/category/youtube", changefreq: "weekly", priority: "0.8" },
   { path: "/category/tiktok", changefreq: "weekly", priority: "0.8" },
