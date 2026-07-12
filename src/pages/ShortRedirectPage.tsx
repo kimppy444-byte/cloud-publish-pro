@@ -23,6 +23,23 @@ export default function ShortRedirectPage() {
     let cancelled = false;
     (async () => {
       if (!code) { setError("Missing code"); return; }
+      // 1) Try user-created smart links first
+      const { data: userLink } = await supabase
+        .from("user_smart_links")
+        .select("id, destination_url, clicks")
+        .eq("slug", code)
+        .maybeSingle();
+      if (cancelled) return;
+      if (userLink) {
+        supabase.from("user_smart_links")
+          .update({ clicks: (userLink.clicks || 0) + 1 })
+          .eq("id", userLink.id)
+          .then(() => {});
+        window.location.replace(userLink.destination_url);
+        return;
+      }
+
+      // 2) Fall back to admin short_urls
       const { data: row, error: e } = await supabase
         .from("short_urls")
         .select("id, original_url, click_count")
@@ -31,7 +48,6 @@ export default function ShortRedirectPage() {
       if (cancelled) return;
       if (e || !row) { setError("Short link not found"); return; }
 
-      // Fire-and-forget analytics
       const today = new Date().toISOString().slice(0, 10);
       supabase.from("short_urls").update({ click_count: (row.click_count || 0) + 1 }).eq("id", row.id).then(() => {});
       supabase.from("short_url_clicks")

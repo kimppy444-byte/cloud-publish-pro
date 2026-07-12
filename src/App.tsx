@@ -45,6 +45,11 @@ import TwitterPage from "./pages/TwitterPage";
 import ThreadsPage from "./pages/ThreadsPage";
 import FacebookAutoPostPage from "./pages/FacebookAutoPostPage";
 
+// User-facing auth + dashboard
+import SignInPage from "./pages/SignInPage";
+import UserDashboardPage from "./pages/UserDashboardPage";
+import UserAuthGate from "./components/UserAuthGate";
+
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -87,7 +92,12 @@ const App = () => (
             <Route path="/s/:code" element={<ShortRedirectPage />} />
             <Route path="/youtube-callback" element={<YouTubeCallbackPage />} />
 
-            {/* Password-gated admin dashboard */}
+            {/* User sign-in + dashboard (any Google account) */}
+            <Route path="/signin" element={<SignInPage />} />
+            <Route path="/signup" element={<SignInPage />} />
+            <Route path="/dashboard" element={<UserAuthGate><UserDashboardPage /></UserAuthGate>} />
+
+            {/* Password-gated admin dashboard (COMBO_WICK only) */}
             <Route path="/admin" element={<Gated><AppLayout /></Gated>}>
               <Route index element={<Index />} />
               <Route path="upload" element={<UploadPage />} />

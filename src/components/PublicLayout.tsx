@@ -41,13 +41,27 @@ export default function PublicLayout() {
             ))}
           </nav>
 
-          <Link
-            to="/?q="
-            className="hidden sm:inline-flex items-center gap-2 text-gray-400 hover:text-white text-sm"
-            aria-label="Search articles"
-          >
-            <Search className="w-4 h-4" />
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              to="/?q="
+              className="hidden sm:inline-flex items-center gap-2 text-gray-400 hover:text-white text-sm"
+              aria-label="Search articles"
+            >
+              <Search className="w-4 h-4" />
+            </Link>
+            <Link
+              to="/signin"
+              className="hidden sm:inline-flex text-sm font-medium text-gray-300 hover:text-white"
+            >
+              Sign in
+            </Link>
+            <Link
+              to="/signup"
+              className="inline-flex items-center rounded-lg bg-gradient-to-r from-red-500 to-orange-500 px-3.5 py-1.5 text-sm font-semibold text-white hover:opacity-90"
+            >
+              Get started
+            </Link>
+          </div>
         </div>
       </header>
 
