@@ -4,12 +4,11 @@ import CookieConsent from "./CookieConsent";
 
 const NAV = [
   { to: "/", label: "Home" },
-  { to: "/category/youtube", label: "YouTube" },
-  { to: "/category/tiktok", label: "TikTok" },
-  { to: "/category/monetization", label: "Monetization" },
-  { to: "/category/tools", label: "Tools" },
-  { to: "/category/growth", label: "Growth" },
   { to: "/smart-links", label: "Smart Links" },
+  { to: "/how-it-works", label: "How it works" },
+  { to: "/pricing", label: "Pricing" },
+  { to: "/social-media-glossary", label: "Glossary" },
+  { to: "/category/monetization", label: "Guides" },
   { to: "/about", label: "About" },
 ];
 
@@ -66,8 +65,8 @@ export default function PublicLayout() {
               <span className="font-bold">Creator Cloud</span>
             </div>
             <p className="text-gray-500 leading-relaxed">
-              Independent journalism on the creator economy. Reviews, playbooks, and revenue tactics for
-              YouTubers, podcasters, and indie founders.
+              Smart-link unlock tools plus practical creator economy guides for YouTubers, social creators,
+              podcasters, and indie founders.
             </p>
           </div>
           <div>
@@ -81,6 +80,8 @@ export default function PublicLayout() {
               <li><Link to="/category/analytics" className="hover:text-white">Analytics</Link></li>
               <li><Link to="/category/newsletter" className="hover:text-white">Newsletter</Link></li>
               <li><Link to="/smart-links" className="hover:text-white">Smart Links</Link></li>
+              <li><Link to="/how-it-works" className="hover:text-white">How it works</Link></li>
+              <li><Link to="/pricing" className="hover:text-white">Pricing</Link></li>
               <li><Link to="/social-media-glossary" className="hover:text-white">Glossary</Link></li>
             </ul>
           </div>
