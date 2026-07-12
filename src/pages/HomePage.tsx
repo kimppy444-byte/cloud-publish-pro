@@ -98,7 +98,7 @@ export default function HomePage() {
                 Creator Cloud helps creators share scripts, templates, bonus videos, and resources through clean unlock pages with progress tracking — backed by a real education hub, policy pages, and transparent creator guides.
               </p>
               <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-                <Link to="/admin" className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90">
+                <Link to="/signup" className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90">
                   Create smart link <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link to="/how-it-works" className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-5 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-accent">

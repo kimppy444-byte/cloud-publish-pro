@@ -51,7 +51,7 @@ export default function SmartLinksPage() {
             </p>
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
               <Link
-                to="/admin"
+                to="/signup"
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
               >
                 Create a smart link <ArrowRight className="h-4 w-4" />

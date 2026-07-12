@@ -90,7 +90,7 @@ export default function HowItWorksPage() {
         <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
           Use the dashboard to generate a link, then shorten it and share it anywhere your audience already clicks.
         </p>
-        <Link to="/admin" className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90">
+        <Link to="/signup" className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90">
           Open creator tools <ArrowRight className="h-4 w-4" />
         </Link>
       </section>
