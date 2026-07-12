@@ -23,6 +23,8 @@ const staticEntries: SitemapEntry[] = [
   { path: "/dmca", changefreq: "yearly", priority: "0.3" },
   { path: "/disclosure", changefreq: "yearly", priority: "0.3" },
   { path: "/editorial-policy", changefreq: "monthly", priority: "0.5" },
+  { path: "/smart-links", changefreq: "monthly", priority: "0.8" },
+  { path: "/social-media-glossary", changefreq: "monthly", priority: "0.8" },
   { path: "/category/youtube", changefreq: "weekly", priority: "0.8" },
   { path: "/category/tiktok", changefreq: "weekly", priority: "0.8" },
   { path: "/category/monetization", changefreq: "weekly", priority: "0.8" },

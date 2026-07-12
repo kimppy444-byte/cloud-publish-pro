@@ -81,6 +81,7 @@ export default function PublicLayout() {
               <li><Link to="/category/analytics" className="hover:text-white">Analytics</Link></li>
               <li><Link to="/category/newsletter" className="hover:text-white">Newsletter</Link></li>
               <li><Link to="/smart-links" className="hover:text-white">Smart Links</Link></li>
+              <li><Link to="/social-media-glossary" className="hover:text-white">Glossary</Link></li>
             </ul>
           </div>
           <div>

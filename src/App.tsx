@@ -21,6 +21,7 @@ import DMCAPage from "./pages/DMCAPage";
 import DisclosurePage from "./pages/DisclosurePage";
 import EditorialPolicyPage from "./pages/EditorialPolicyPage";
 import SmartLinksPage from "./pages/SmartLinksPage";
+import SocialMediaGlossaryPage from "./pages/SocialMediaGlossaryPage";
 
 // Bridge & callback (kept noindex via robots.txt)
 import UnlockYouTubePage from "./pages/UnlockYouTubePage";
@@ -72,6 +73,7 @@ const App = () => (
               <Route path="/disclosure" element={<DisclosurePage />} />
               <Route path="/editorial-policy" element={<EditorialPolicyPage />} />
               <Route path="/smart-links" element={<SmartLinksPage />} />
+              <Route path="/social-media-glossary" element={<SocialMediaGlossaryPage />} />
             </Route>
 
             {/* Bridge / unlock pages — noindex via robots, kept outside PublicLayout */}
