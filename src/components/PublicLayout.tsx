@@ -9,6 +9,7 @@ const NAV = [
   { to: "/category/monetization", label: "Monetization" },
   { to: "/category/tools", label: "Tools" },
   { to: "/category/growth", label: "Growth" },
+  { to: "/smart-links", label: "Smart Links" },
   { to: "/about", label: "About" },
 ];
 
@@ -79,6 +80,7 @@ export default function PublicLayout() {
               <li><Link to="/category/growth" className="hover:text-white">Growth</Link></li>
               <li><Link to="/category/analytics" className="hover:text-white">Analytics</Link></li>
               <li><Link to="/category/newsletter" className="hover:text-white">Newsletter</Link></li>
+              <li><Link to="/smart-links" className="hover:text-white">Smart Links</Link></li>
             </ul>
           </div>
           <div>
