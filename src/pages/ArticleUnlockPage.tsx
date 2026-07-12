@@ -58,7 +58,7 @@ export default function ArticleUnlockPage() {
 
   // Decode payload (same shape as /u/:videoId)
   const { videoId, channelId, targetUrl, actions } = useMemo(() => {
-    let videoId = id;
+    let videoId = searchParams.get("v") || id;
     let channelId = "";
     let targetUrl = "";
     let actions = { subscribe: true, like: true, comment: false };
