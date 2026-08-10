@@ -49,6 +49,8 @@ import FacebookAutoPostPage from "./pages/FacebookAutoPostPage";
 import SignInPage from "./pages/SignInPage";
 import UserDashboardPage from "./pages/UserDashboardPage";
 import UserAuthGate from "./components/UserAuthGate";
+import OAuthConsentPage from "./pages/OAuthConsentPage";
+
 
 import NotFound from "./pages/NotFound";
 
@@ -96,6 +98,11 @@ const App = () => (
             <Route path="/signin" element={<SignInPage />} />
             <Route path="/signup" element={<SignInPage />} />
             <Route path="/dashboard" element={<UserAuthGate><UserDashboardPage /></UserAuthGate>} />
+
+            {/* OAuth 2.1 consent screen for MCP clients */}
+            <Route path="/.lovable/oauth/consent" element={<OAuthConsentPage />} />
+
+
 
             {/* Password-gated admin dashboard (COMBO_WICK only) */}
             <Route path="/admin" element={<Gated><AppLayout /></Gated>}>
