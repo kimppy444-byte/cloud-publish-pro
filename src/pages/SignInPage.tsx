@@ -12,25 +12,29 @@ export default function SignInPage() {
   const [loading, setLoading] = useState(true);
   const mode = params.get("mode") === "signup" ? "signup" : "signin";
 
+  const rawNext = params.get("next");
+  const next = rawNext && /^\/(?!\/)/.test(rawNext) ? rawNext : "/dashboard";
+
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
-      if (s) nav("/dashboard", { replace: true });
+      if (s) nav(next, { replace: true });
     });
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) nav("/dashboard", { replace: true });
+      if (data.session) nav(next, { replace: true });
       setLoading(false);
     });
     return () => subscription.unsubscribe();
-  }, [nav]);
+  }, [nav, next]);
 
   const handleGoogle = async () => {
     setError(null);
     const res = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: `${window.location.origin}/signin`,
+      redirect_uri: `${window.location.origin}/signin?next=${encodeURIComponent(next)}`,
       extraParams: { prompt: "select_account" },
     });
     if (res.error) setError(res.error.message || "Sign-in failed");
   };
+
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-gray-100 grid md:grid-cols-2">
