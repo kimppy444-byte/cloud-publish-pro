@@ -99,6 +99,11 @@ const App = () => (
             <Route path="/signup" element={<SignInPage />} />
             <Route path="/dashboard" element={<UserAuthGate><UserDashboardPage /></UserAuthGate>} />
 
+            {/* OAuth 2.1 consent screen for MCP clients */}
+            <Route path="/.lovable/oauth/consent" element={<OAuthConsentPage />} />
+
+
+
             {/* Password-gated admin dashboard (COMBO_WICK only) */}
             <Route path="/admin" element={<Gated><AppLayout /></Gated>}>
               <Route index element={<Index />} />
