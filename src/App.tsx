@@ -49,6 +49,8 @@ import FacebookAutoPostPage from "./pages/FacebookAutoPostPage";
 import SignInPage from "./pages/SignInPage";
 import UserDashboardPage from "./pages/UserDashboardPage";
 import UserAuthGate from "./components/UserAuthGate";
+import OAuthConsentPage from "./pages/OAuthConsentPage";
+
 
 import NotFound from "./pages/NotFound";
 
