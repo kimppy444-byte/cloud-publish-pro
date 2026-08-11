@@ -1,6 +1,5 @@
 import { Helmet } from "react-helmet-async";
 import { useLocation } from "react-router-dom";
-import { posts } from "@/content/posts";
 
 const SITE_URL = "https://cloud-publish-pro.lovable.app";
 const SITE_NAME = "Creator Cloud";
@@ -82,11 +81,12 @@ function articleDescription(excerpt: string, body: string) {
   return `${candidate.slice(0, boundary > 140 ? boundary : 157).replace(/[,:;\s]+$/, "")}…`;
 }
 
-export default function PublicRouteSeo() {
+type PublicRouteSeoProps = {
+  article?: { slug: string; title: string; excerpt: string; body: string };
+};
+
+export default function PublicRouteSeo({ article }: PublicRouteSeoProps) {
   const { pathname } = useLocation();
-  const article = pathname.startsWith("/blog/")
-    ? posts.find((post) => pathname === `/blog/${post.slug}`)
-    : undefined;
   const categorySlug = pathname.startsWith("/category/") ? pathname.split("/")[2] : undefined;
   const categoryName = categorySlug ? CATEGORY_NAMES[categorySlug] : undefined;
 
@@ -94,7 +94,7 @@ export default function PublicRouteSeo() {
   let description: string;
   let type: "website" | "article" = "website";
 
-  if (article) {
+  if (article && pathname === `/blog/${article.slug}`) {
     title = `${article.title} | ${SITE_NAME}`;
     description = articleDescription(article.excerpt, article.body);
     type = "article";
