@@ -101,7 +101,7 @@ export default function PublicRouteSeo({ article }: PublicRouteSeoProps) {
     type = "article";
   } else if (categoryName) {
     title = `${categoryName} Creator Guides | ${SITE_NAME}`;
-    description = `Explore original ${categoryName} guides from Creator Cloud, including practical tutorials, platform analysis, tool comparisons, growth tactics, and revenue benchmarks.`;
+    description = `Explore original ${categoryName} guides from Creator Cloud, with practical tutorials, platform analysis, tool comparisons, growth tactics, and revenue benchmarks.`;
   } else {
     const meta = STATIC_META[pathname] ?? STATIC_META["/"];
     title = meta.title;
