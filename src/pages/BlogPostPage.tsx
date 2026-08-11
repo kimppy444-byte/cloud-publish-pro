@@ -6,6 +6,7 @@ import { posts } from "@/content/posts";
 import { getAuthorProfile } from "@/content/authors";
 import AdSlot from "@/components/AdSlot";
 import { decodeBlogUnlock } from "@/lib/blog-smart-link";
+import PublicRouteSeo from "@/components/PublicRouteSeo";
 
 /**
  * Returns true only when the visitor arrived from one of our own smart-link
@@ -238,6 +239,7 @@ export default function BlogPostPage() {
         <script type="application/ld+json">{JSON.stringify(articleSchema)}</script>
         <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>
       </Helmet>
+      <PublicRouteSeo article={post} />
 
       <article className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
         <Link to="/" className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white mb-8">
