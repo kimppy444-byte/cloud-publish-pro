@@ -1,6 +1,7 @@
 import { Link, NavLink, Outlet } from "react-router-dom";
 import { Cloud, Search } from "lucide-react";
 import CookieConsent from "./CookieConsent";
+import PublicRouteSeo from "./PublicRouteSeo";
 
 const NAV = [
   { to: "/", label: "Home" },
@@ -67,6 +68,7 @@ export default function PublicLayout() {
 
       <main className="flex-1">
         <Outlet />
+        <PublicRouteSeo />
       </main>
 
       <footer className="border-t border-white/5 bg-[#070707] mt-20">
