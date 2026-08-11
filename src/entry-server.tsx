@@ -1,6 +1,6 @@
 import { renderToString } from "react-dom/server";
 import { StaticRouter } from "react-router-dom/server";
-import { HelmetProvider } from "react-helmet-async";
+import { HelmetProvider, type HelmetServerState } from "react-helmet-async";
 import App from "./App";
 import { posts } from "./content/posts";
 
@@ -29,15 +29,7 @@ export const prerenderRoutes = [
 ];
 
 export function render(url: string) {
-  const helmetContext: {
-    helmet?: {
-      title: { toString(): string };
-      priority: { toString(): string };
-      meta: { toString(): string };
-      link: { toString(): string };
-      script: { toString(): string };
-    };
-  } = {};
+  const helmetContext: { helmet?: HelmetServerState } = {};
   const html = renderToString(
     <HelmetProvider context={helmetContext}>
       <StaticRouter location={url}>
