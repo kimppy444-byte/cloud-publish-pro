@@ -87,6 +87,7 @@ type PublicRouteSeoProps = {
 
 export default function PublicRouteSeo({ article }: PublicRouteSeoProps) {
   const { pathname } = useLocation();
+  if (pathname.startsWith("/blog/") && !article) return null;
   const categorySlug = pathname.startsWith("/category/") ? pathname.split("/")[2] : undefined;
   const categoryName = categorySlug ? CATEGORY_NAMES[categorySlug] : undefined;
 
