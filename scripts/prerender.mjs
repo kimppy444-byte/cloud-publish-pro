@@ -23,7 +23,7 @@ function routeHead(helmet) {
 }
 
 for (const route of serverEntry.prerenderRoutes) {
-  const { html, helmet } = serverEntry.render(route);
+  const { html, helmet } = await serverEntry.render(route);
   const output = template
     .replace("<!-- ROUTE_HEAD_START -->\n    <!-- ROUTE_HEAD_END -->", `<!-- ROUTE_HEAD_START -->\n    ${routeHead(helmet)}\n    <!-- ROUTE_HEAD_END -->`)
     .replace('<div id="root"></div>', `<div id="root">${html}</div>`);

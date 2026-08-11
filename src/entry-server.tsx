@@ -1,7 +1,6 @@
 import { renderToString } from "react-dom/server";
 import { StaticRouter } from "react-router-dom/server";
 import { HelmetProvider, type HelmetServerState } from "react-helmet-async";
-import App from "./App";
 import { posts } from "./content/posts";
 
 const staticRoutes = [
@@ -28,7 +27,22 @@ export const prerenderRoutes = [
   ...posts.map((post) => `/blog/${post.slug}`),
 ];
 
-export function render(url: string) {
+export async function render(url: string) {
+  if (!("localStorage" in globalThis)) {
+    const values = new Map<string, string>();
+    Object.defineProperty(globalThis, "localStorage", {
+      value: {
+        getItem: (key: string) => values.get(key) ?? null,
+        setItem: (key: string, value: string) => values.set(key, value),
+        removeItem: (key: string) => values.delete(key),
+        clear: () => values.clear(),
+        key: (index: number) => Array.from(values.keys())[index] ?? null,
+        get length() { return values.size; },
+      },
+      configurable: true,
+    });
+  }
+  const { default: App } = await import("./App");
   const helmetContext: { helmet?: HelmetServerState } = {};
   const html = renderToString(
     <HelmetProvider context={helmetContext}>
