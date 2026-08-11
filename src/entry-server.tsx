@@ -1,6 +1,6 @@
 import { renderToString } from "react-dom/server";
 import { StaticRouter } from "react-router-dom/server";
-import { HelmetProvider, type FilledContext } from "react-helmet-async";
+import { HelmetProvider } from "react-helmet-async";
 import App from "./App";
 import { posts } from "./content/posts";
 
@@ -29,7 +29,15 @@ export const prerenderRoutes = [
 ];
 
 export function render(url: string) {
-  const helmetContext = {} as FilledContext;
+  const helmetContext: {
+    helmet?: {
+      title: { toString(): string };
+      priority: { toString(): string };
+      meta: { toString(): string };
+      link: { toString(): string };
+      script: { toString(): string };
+    };
+  } = {};
   const html = renderToString(
     <HelmetProvider context={helmetContext}>
       <StaticRouter location={url}>
@@ -38,5 +46,6 @@ export function render(url: string) {
     </HelmetProvider>,
   );
 
+  if (!helmetContext.helmet) throw new Error(`Helmet metadata was not generated for ${url}`);
   return { html, helmet: helmetContext.helmet };
 }
